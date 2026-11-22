@@ -15,7 +15,9 @@ const mongoUri = process.env.MONGODB_URI || "";
 const betterAuthSecret = process.env.BETTER_AUTH_SECRET || "";
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || "";
 const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
-const demoPaymentEnabled = process.env.NODE_ENV !== "production" && !stripeSecretKey;
+const zinipayApiKey = process.env.ZINIPAY_API_KEY || "";
+const zinipayBaseUrl = (process.env.ZINIPAY_BASE_URL || "https://api.zinipay.com").replace(/\/+$/, "");
+const demoPaymentEnabled = process.env.NODE_ENV !== "production" && !stripeSecretKey && !zinipayApiKey;
 
 if (authEnabled && (!mongoUri || !betterAuthSecret || betterAuthSecret.length < 32)) {
   throw new Error("AUTH_ENABLED=true requires MONGODB_URI and a BETTER_AUTH_SECRET of at least 32 characters.");
@@ -39,6 +41,8 @@ export const config = {
   stripeSecretKey,
   stripeWebhookSecret,
   demoPaymentEnabled,
+  zinipayApiKey,
+  zinipayBaseUrl,
   googleClientId: process.env.GOOGLE_CLIENT_ID || "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
   authUrl,

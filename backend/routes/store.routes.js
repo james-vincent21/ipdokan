@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { optionalAuth, requireAuth } from "../middleware/auth.middleware.js";
+import { confirmZinipayPayment, createZinipayInvoice } from "../controllers/zinipay.controller.js";
 import { addProductReview, completeDemoPayment, createOrder, createStripeCheckout, listMyOrders, listProductReviews, listProducts, paymentMode, toggleProductReviewLike } from "../controllers/store.controller.js";
 
 const router = Router();
@@ -13,4 +14,6 @@ router.get("/orders", listMyOrders);
 router.post("/orders", createOrder);
 router.post("/payments/stripe/session", requireAuth, createStripeCheckout);
 router.post("/payments/demo/complete", requireAuth, completeDemoPayment);
+router.post("/payments/zinipay/create", requireAuth, createZinipayInvoice);
+router.post("/payments/zinipay/confirm", requireAuth, confirmZinipayPayment);
 export default router;

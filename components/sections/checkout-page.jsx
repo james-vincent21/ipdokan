@@ -52,7 +52,13 @@ export function CheckoutPage() {
     }).catch(() => setError("Could not load products. Please check your connection and try again."))
       .finally(() => setLoading(false));
     fetch(`${apiUrl}/api/payments/mode`, { cache: "no-store" }).then((response) => response.json()).then((result) => setPaymentMode(result.mode || "disabled")).catch(() => setPaymentMode("disabled"));
+    if (new URLSearchParams(window.location.search).get("payment") === "cancelled") setError("Payment was cancelled. No money was charged.");
   }, []);
+
+  // ZiniPay (bKash, Nagad, etc.) charges in BDT only.
+  useEffect(() => {
+    if (paymentMode === "zinipay" && paymentCurrency !== "BDT") setPaymentCurrency("BDT");
+  }, [paymentMode, paymentCurrency, setPaymentCurrency]);
 
   useEffect(() => {
     if (!isProductPage) return;
@@ -211,7 +217,19 @@ export function CheckoutPage() {
       setMessage("Demo payment successful. No real payment was charged. Your purchase is available in your Profile.");
       return;
     }
-    if (modeResult.mode !== "stripe") throw new Error("Payment is not configured. Enable Stripe test mode or restart the local API in development.");
+    if (modeResult.mode === "zinipay") {
+      const response = await fetch(`${apiUrl}/api/payments/zinipay/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ orderIds }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not start the ZiniPay payment.");
+      window.location.assign(result.url);
+      return;
+    }
+    if (modeResult.mode !== "stripe") throw new Error("Payment is not configured on the server yet.");
     const response = await fetch(`${apiUrl}/api/payments/stripe/session`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -284,7 +302,7 @@ export function CheckoutPage() {
           {selectedProduct.rating > 0 && <p className="product-detail-rating">★ {Number(selectedProduct.rating).toFixed(1)} {selectedProduct.reviewCount ? `(${selectedProduct.reviewCount} reviews)` : ""}</p>}
           <p className="product-detail-description">{selectedProduct.description || "Product details and plan options."}</p>
           <p className="product-detail-sku">SKU: {selectedProduct.codeNumber}</p>
-          <div className="product-payment-currency" aria-label="Payment currency"><button type="button" className={paymentCurrency === "USD" ? "is-selected" : ""} onClick={() => setPaymentCurrency("USD")}>USD</button><button type="button" className={paymentCurrency === "BDT" ? "is-selected" : ""} onClick={() => setPaymentCurrency("BDT")}>BDT</button></div>
+          {paymentMode !== "zinipay" && <div className="product-payment-currency" aria-label="Payment currency"><button type="button" className={paymentCurrency === "USD" ? "is-selected" : ""} onClick={() => setPaymentCurrency("USD")}>USD</button><button type="button" className={paymentCurrency === "BDT" ? "is-selected" : ""} onClick={() => setPaymentCurrency("BDT")}>BDT</button></div>}
           <strong className="product-detail-price">{formatPrice(selectedPaymentPrice, paymentCurrency)} <small>per unit</small></strong>
           <p className="product-detail-alt-price">Also available: {formatPrice(selectedPriceUsd, "USD")} / {formatPrice(selectedPriceBdt, "BDT")}</p>
           {selectedProduct.variants?.length > 0 && <div className="product-detail-label"><span>Choose plan / variant</span><div className="product-variant-options">{selectedProduct.variants.map((variant) => <button type="button" key={variant.id} className={selectedVariant?.id === variant.id ? "is-selected" : ""} disabled={!variant.available} onClick={() => { setVariantId(variant.id); setQuantity("1"); setError(""); }}><strong>{variant.name}</strong><small>{formatPrice(paymentCurrency === "BDT" ? (variant.priceBdt ?? 0) : (variant.priceUsd ?? variant.price), paymentCurrency)}</small></button>)}</div></div>}
@@ -328,7 +346,7 @@ export function CheckoutPage() {
           </article>)}</div>
           <div className="checkout-totals">{Object.entries(totals).map(([currency, total]) => <p key={currency}><span>Total ({currency})</span><strong>{formatPrice(total, currency)}</strong></p>)}</div>
           <button className="auth-submit checkout-submit" type="button" disabled={busy} onClick={placeOrders}>{busy ? "Placing order…" : "Place order"}</button>
-          <p className="checkout-payment-note">{paymentMode === "demo" ? "Demo mode completes the purchase without charging a real payment method." : "Placing an order reserves inventory. Codes are delivered after Stripe confirms payment."}</p></>
+          <p className="checkout-payment-note">{paymentMode === "demo" ? "Demo mode completes the purchase without charging a real payment method." : paymentMode === "zinipay" ? "You will pay in BDT with ZiniPay (bKash, Nagad and more). Codes are delivered as soon as the payment is confirmed." : "Placing an order reserves inventory. Codes are delivered after Stripe confirms payment."}</p></>
           : <p className="checkout-empty">Your cart is empty. Choose a product and add a quantity to continue.</p>}
         </section>
       </div>}

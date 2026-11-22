@@ -15,8 +15,15 @@ const orderSchema = new mongoose.Schema({
   quantity: { type: Number, required: true, min: 1, default: 1 },
   stripeCheckoutSessionId: { type: String, default: "", index: true },
   paymentIntentId: { type: String, default: "" },
-  paymentMethod: { type: String, enum: ["", "stripe", "demo"], default: "" },
+  paymentMethod: { type: String, enum: ["", "stripe", "demo", "zinipay"], default: "" },
   paymentReference: { type: String, default: "" },
+  // ZiniPay: one val_id is shared by every order paid in the same checkout.
+  zinipayValId: { type: String, default: "", index: true },
+  zinipayInvoiceId: { type: String, default: "", index: true },
+  zinipayTransactionId: { type: String, default: "" },
+  zinipayPaymentChannel: { type: String, default: "" },
+  // Set when the customer is sent to a payment page, so the order is not expired while they pay.
+  paymentStartedAt: { type: Date, default: null },
   status: { type: String, enum: ["pending", "processing", "paid", "cancelled"], default: "pending", index: true },
   deliveredCode: { type: String, default: "" },
   deliveredCodes: { type: [String], default: [], index: true },

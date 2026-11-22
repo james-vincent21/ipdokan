@@ -322,7 +322,7 @@ export async function createStripeCheckout(req, res, next) {
   } catch (error) { next(error); }
 }
 
-async function fulfillPaidOrder(orderId, { method, reference, paymentIntentId = "" }) {
+export async function fulfillPaidOrder(orderId, { method, reference, paymentIntentId = "" }) {
   let order = await Order.findOneAndUpdate(
     { _id: orderId, status: "pending" },
     { $set: {
@@ -338,7 +338,7 @@ async function fulfillPaidOrder(orderId, { method, reference, paymentIntentId = 
     if (!order) {
       const existing = await Order.findOne({ _id: orderId, status: "paid" });
       if (existing) return;
-      throw new Error(`Order ${orderId} is not available for Stripe fulfillment.`);
+      throw new Error(`Order ${orderId} is not available for ${method} fulfillment.`);
     }
   }
 
@@ -385,7 +385,7 @@ export async function stripeWebhook(req, res, next) {
 }
 
 export function paymentMode(_req, res) {
-  res.json({ mode: config.stripeSecretKey ? "stripe" : config.demoPaymentEnabled ? "demo" : "disabled" });
+  res.json({ mode: config.zinipayApiKey ? "zinipay" : config.stripeSecretKey ? "stripe" : config.demoPaymentEnabled ? "demo" : "disabled" });
 }
 
 export async function completeDemoPayment(req, res, next) {
@@ -728,11 +728,12 @@ export async function cancelOrder(req, res, next) {
   } catch (error) { next(error); }
 }
 
-const PENDING_ORDER_EXPIRY_MS = 30 * 60 * 1000;
+export const PENDING_ORDER_EXPIRY_MS = 30 * 60 * 1000;
 
 export async function expirePendingOrders() {
   const cutoff = new Date(Date.now() - PENDING_ORDER_EXPIRY_MS);
-  const expiredOrders = await Order.find({ status: "pending", createdAt: { $lt: cutoff } });
+  // An order whose customer was just sent to a payment page gets another 30 minutes to finish paying.
+  const expiredOrders = await Order.find({ status: "pending", createdAt: { $lt: cutoff }, $or: [{ paymentStartedAt: null }, { paymentStartedAt: { $lt: cutoff } }] });
   let cancelledCount = 0;
   for (const order of expiredOrders) {
     const updated = await Order.findOneAndUpdate(

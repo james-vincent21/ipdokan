@@ -6,6 +6,7 @@ import profileRoutes from "./routes/profile.routes.js";
 import storeRoutes from "./routes/store.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import { stripeWebhook } from "./controllers/store.controller.js";
+import { zinipayWebhook } from "./controllers/zinipay.controller.js";
 
 const app = express();
 
@@ -34,6 +35,8 @@ if (auth) {
 }
 
 app.post("/api/payments/stripe/webhook", express.raw({ type: "application/json" }), stripeWebhook);
+// ZiniPay may send the callback as JSON, as a form, or as query parameters.
+app.all("/api/payments/zinipay/webhook", express.json({ limit: "16kb" }), express.urlencoded({ extended: false, limit: "16kb" }), zinipayWebhook);
 
 // Better Auth needs the raw request stream, so JSON parsing is applied after its handler.
 app.use(express.json({ limit: "16kb" }));
