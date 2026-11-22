@@ -26,12 +26,12 @@ export function UserProfile() {
     let retryTimer;
     const searchParams = new URLSearchParams(window.location.search);
     const targetOrderIds = searchParams.get("orderIds")?.split(",").filter(Boolean) || [];
-    const returnedFromZinipay = searchParams.get("payment") === "zinipay";
+    const returnedFrom = ["zinipay", "cryptomus"].includes(searchParams.get("payment")) ? searchParams.get("payment") : "";
     async function loadOrders(attempt = 0) {
       try {
-        // Ask the server to verify the ZiniPay payment directly, in case its webhook has not arrived yet.
-        if (returnedFromZinipay && targetOrderIds.length && attempt % 3 === 0) {
-          await fetch(`${apiUrl}/api/payments/zinipay/confirm`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderIds: targetOrderIds }) }).catch(() => {});
+        // Ask the server to verify the payment with the gateway directly, in case its webhook has not arrived yet.
+        if (returnedFrom && targetOrderIds.length && attempt % 3 === 0) {
+          await fetch(`${apiUrl}/api/payments/${returnedFrom}/confirm`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderIds: targetOrderIds }) }).catch(() => {});
         }
         const orderResponse = await fetch(`${apiUrl}/api/orders`, { credentials: "include", cache: "no-store" });
         if (!orderResponse.ok) return;

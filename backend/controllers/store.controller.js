@@ -385,7 +385,10 @@ export async function stripeWebhook(req, res, next) {
 }
 
 export function paymentMode(_req, res) {
-  res.json({ mode: config.zinipayApiKey ? "zinipay" : config.stripeSecretKey ? "stripe" : config.demoPaymentEnabled ? "demo" : "disabled" });
+  // Hosted gateways the customer can choose between at checkout.
+  const methods = [config.zinipayApiKey && "zinipay", config.cryptomusEnabled && "cryptomus"].filter(Boolean);
+  const mode = methods[0] || (config.stripeSecretKey ? "stripe" : config.demoPaymentEnabled ? "demo" : "disabled");
+  res.json({ mode, methods: methods.length ? methods : [mode] });
 }
 
 export async function completeDemoPayment(req, res, next) {
@@ -733,7 +736,10 @@ export const PENDING_ORDER_EXPIRY_MS = 30 * 60 * 1000;
 export async function expirePendingOrders() {
   const cutoff = new Date(Date.now() - PENDING_ORDER_EXPIRY_MS);
   // An order whose customer was just sent to a payment page gets another 30 minutes to finish paying.
-  const expiredOrders = await Order.find({ status: "pending", createdAt: { $lt: cutoff }, $or: [{ paymentStartedAt: null }, { paymentStartedAt: { $lt: cutoff } }] });
+  const expiredOrders = await Order.find({ status: "pending", createdAt: { $lt: cutoff }, $and: [
+    { $or: [{ paymentStartedAt: null }, { paymentStartedAt: { $lt: cutoff } }] },
+    { $or: [{ paymentHoldUntil: null }, { paymentHoldUntil: { $lt: new Date() } }] },
+  ] });
   let cancelledCount = 0;
   for (const order of expiredOrders) {
     const updated = await Order.findOneAndUpdate(

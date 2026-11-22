@@ -10,6 +10,6 @@ rsync -az --delete \
   --exclude node_modules --exclude .next --exclude .git --exclude .DS_Store \
   --exclude '.env' --exclude '.env.*' --include '.env.example' \
   ./ "$HOST:/var/www/ipdokan/"
-# The local .env (MongoDB, Google, auth secret) is copied separately with owner-only permissions.
-scp -p .env "$HOST:/var/www/ipdokan/.env"
+# The server keeps its own production .env; the local .env (dev database) is never copied over it.
+ssh "$HOST" "test -f /var/www/ipdokan/.env || { echo 'Missing /var/www/ipdokan/.env on the server'; exit 1; }"
 ssh "$HOST" "chmod 600 /var/www/ipdokan/.env && PUBLIC_URL='$PUBLIC_URL' bash /var/www/ipdokan/deploy/server-setup.sh"
