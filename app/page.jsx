@@ -3,6 +3,9 @@ import { HeroSection } from "@/components/sections/hero-section";
 import { ServiceCatalog } from "@/components/sections/service-catalog";
 import { TrustAbout } from "@/components/sections/trust-about";
 import { SupportChat } from "@/components/ui/support-chat";
+import { StrategicPartners } from "@/components/sections/strategic-partners";
+import { ServicesOverview } from "@/components/sections/services-overview";
+import { SiteFooter } from "@/components/layout/site-footer";
 
 export default function HomePage() {
   return (
@@ -14,6 +17,9 @@ export default function HomePage() {
         <TrustAbout />
       </main>
       <SupportChat />
+      <StrategicPartners />
+      <ServicesOverview />
+      <SiteFooter />
     </>
   );
 }

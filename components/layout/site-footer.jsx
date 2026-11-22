@@ -1,18 +1,18 @@
 const categories = [
-  ["Discount proxy panel", "#discount"],
-  ["Monthly ISP Proxy", "#isp"],
-  ["Dedicated Servers", "#servers"],
-  ["Private Proxy", "#private-proxy"],
-  ["Residential Static Proxy", "#residential"],
-  ["VPS", "#vps"],
+  ["Discount proxy panel", "/#discount"],
+  ["Monthly ISP Proxy", "/#isp"],
+  ["Dedicated Servers", "/#servers"],
+  ["Private Proxy", "/#private-proxy"],
+  ["Residential Static Proxy", "/#residential"],
+  ["VPS", "/#vps"],
 ];
 
 const usefulLinks = [
-  ["Home", "#home"],
-  ["Shop", "#products"],
-  ["About Us", "#about"],
-  ["Contact Us", "#support"],
-  ["Support", "#support"],
+  ["Home", "/"],
+  ["Shop", "/catalog"],
+  ["About Us", "/#about"],
+  ["Contact Us", "/#support"],
+  ["Support", "/#support"],
 ];
 
 const legalLinks = ["Return and Refund Policy", "Privacy Policy", "Terms and Conditions", "Terms of Service", "About Us"];
@@ -22,7 +22,7 @@ export function SiteFooter() {
     <footer className="site-footer" id="footer">
       <div className="footer-main">
         <div className="footer-brand-column">
-          <a className="footer-logo" href="#home" aria-label="IP Dokan home"><img src="/ip-dokan-logo.svg" alt="IP Dokan" /></a>
+          <a className="footer-logo" href="/" aria-label="IP Dokan home"><img src="/ip-dokan-logo.svg" alt="IP Dokan" /></a>
           <p>Trusted by thousands, delivering premium IP and proxy solutions with speed, security, and reliability.</p>
           <h2>Follow Us</h2>
           <div className="footer-social-links">
@@ -44,7 +44,7 @@ export function SiteFooter() {
         <nav className="footer-column" aria-label="Useful links">
           <h2>Useful Links</h2>
           {usefulLinks.map(([label, href]) => <a href={href} key={label}>{label}</a>)}
-          <a href="#support">My Wallet</a>
+          <a href="/#support">My Wallet</a>
         </nav>
         <nav className="footer-column" aria-label="Policies">
           <h2>Terms and<br />Conditions</h2>
@@ -64,9 +64,14 @@ export function SiteFooter() {
       </div>
       <div className="footer-bottom">
         <p>Based on <strong>IPdokan</strong> Copyright © {new Date().getFullYear()} IPDokan. All Rights Reserved.</p>
+        <div className="footer-credit"><strong>Built by James Vincent</strong><span>Software &amp; AI/ML Engineer</span></div>
         <div className="footer-bottom-actions">
           <img className="footer-zinipay" src="/zinipay-1.webp" alt="ZiniPay" />
-          <a href="#home" className="footer-back-top" aria-label="Back to top">↑</a>
+          <span className="footer-binance" aria-label="Binance Wallet supported">
+            <svg viewBox="0 0 32 32" aria-hidden="true"><path d="m16 2 4.2 4.2L16 10.4l-4.2-4.2L16 2Zm-9.9 9.9 4.2 4.2-4.2 4.2-4.2-4.2 4.2-4.2Zm19.8 0 4.2 4.2-4.2 4.2-4.2-4.2 4.2-4.2ZM16 21.6l4.2 4.2L16 30l-4.2-4.2 4.2-4.2Zm0-9.7 4.2 4.2L16 20.3l-4.2-4.2 4.2-4.2Z" fill="currentColor" /></svg>
+            <span><strong>BINANCE PAY</strong><small>Wallet supported</small></span>
+          </span>
+          <a href="#top" className="footer-back-top" aria-label="Back to top">↑</a>
         </div>
       </div>
     </footer>

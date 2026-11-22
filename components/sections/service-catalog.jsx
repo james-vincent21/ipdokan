@@ -1,3 +1,15 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useCurrencyPreference } from "@/lib/currency-preference";
+
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+function formatPrice(amount, currency) {
+  try { return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(amount); }
+  catch { return `${currency} ${Number(amount || 0).toFixed(2)}`; }
+}
+
 const services = [
   {
     id: "discount",
@@ -50,6 +62,32 @@ const services = [
 ];
 
 export function ServiceCatalog() {
+  const [products, setProducts] = useState([]);
+  const [currency] = useCurrencyPreference();
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${apiUrl}/api/products`, { signal: controller.signal, cache: "no-store" })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) return;
+        const allProducts = result.products || [];
+        const featuredProducts = allProducts
+          .filter((product) => product.showInPopular)
+          .sort((a, b) => (a.popularOrder || 0) - (b.popularOrder || 0));
+        const visibleProducts = featuredProducts.length ? featuredProducts : allProducts.slice(0, 6);
+        setProducts(visibleProducts.map((product) => ({
+          ...product,
+          mark: product.codeNumber,
+          style: "vless",
+        })));
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") setProducts([]);
+      });
+    return () => controller.abort();
+  }, []);
+
   return (
     <section className="services-section" id="products" aria-labelledby="services-title">
       <div className="services-container">
@@ -59,9 +97,35 @@ export function ServiceCatalog() {
           <p>Explore proxy and server categories, all gathered in one place.</p>
         </header>
 
+        <section className="popular-products" aria-labelledby="popular-products-title">
+          <h3 id="popular-products-title">Popular product</h3>
+          <div className="popular-products-grid">
+            {products.map((product) => {
+              const variants = product.variants || [];
+              const productPrice = currency === "BDT"
+                ? (variants.length ? Math.min(...variants.map((variant) => Number(variant.priceBdt ?? 0))) : Number(product.priceBdt ?? 0))
+                : (variants.length ? Math.min(...variants.map((variant) => Number(variant.priceUsd ?? variant.price))) : Number(product.priceUsd ?? product.price));
+              return (
+              <a className="popular-product-card" href={product.brand ? `/catalog?brand=${encodeURIComponent(product.brand)}` : `/product/${encodeURIComponent(product.id)}`} key={product.id}>
+                <span className={`popular-product-art ${product.style || "vless"}`} aria-hidden="true">
+                  {product.imageUrl ? <img src={product.imageUrl} alt="" /> : <span className="product-stage"><span>{product.name?.trim()?.charAt(0).toUpperCase() || "P"}</span></span>}
+                </span>
+                <span className="popular-product-details">
+                  <span className="popular-product-meta"><span>{formatPrice(productPrice, currency)}</span>{product.available !== undefined && <span className={product.available ? "catalog-stock" : "catalog-stock is-empty"}>{product.available} in stock</span>}{product.rating && <span className="product-rating"><b>★</b> {product.rating} <i>☰</i> {product.reviews}</span>}</span>
+                  <span className="popular-product-name">{product.name}</span>
+                  <span className="catalog-home-cta">Purchase →</span>
+                </span>
+              </a>
+              );
+            })}
+            {!products.length && <p className="popular-products-empty">No products are featured yet.</p>}
+          </div>
+          <a className="view-products-button" href="/catalog">View all products <span aria-hidden="true">→</span></a>
+        </section>
+
         <div className="services-grid">
           {services.map((service) => (
-            <article className="service-card" id={service.id} key={service.id}>
+            <a className="service-card" id={service.id} href={`/catalog?category=${encodeURIComponent(service.title)}`} key={service.id}>
               <div className="service-card-top">
                 <span className="service-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none">{service.icon}</svg></span>
                 <span className="service-index">{service.index} / 06</span>
@@ -70,7 +134,7 @@ export function ServiceCatalog() {
               <h3>{service.title}</h3>
               <p>{service.description}</p>
               <div className="service-card-footer"><span>Explore category</span><span className="service-arrow" aria-hidden="true">↗</span></div>
-            </article>
+            </a>
           ))}
         </div>
         <div className="services-note" id="support">

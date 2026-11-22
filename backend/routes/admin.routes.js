@@ -1,0 +1,27 @@
+import { Router } from "express";
+import { requireAuth } from "../middleware/auth.middleware.js";
+import { requireAdmin } from "../middleware/admin.middleware.js";
+import { addAdminEmail, addCodes, addProduct, adminOrders, adminOverview, adminProducts, adminReviews, adminUsers, cancelOrder, confirmOrderPayment, deleteProduct, deleteProductReview, editProduct, listAdminEmails, productActivity, removeAdminEmail, replyToProductReview, setProductStock } from "../controllers/store.controller.js";
+
+const router = Router();
+router.use(requireAuth, requireAdmin);
+router.get("/access", (req, res) => res.json({ isAdmin: true, email: String(req.user.email || "").toLowerCase() }));
+router.get("/admins", listAdminEmails);
+router.post("/admins", addAdminEmail);
+router.delete("/admins/:id", removeAdminEmail);
+router.get("/overview", adminOverview);
+router.get("/products", adminProducts);
+router.post("/products", addProduct);
+router.patch("/products/:id", editProduct);
+router.delete("/products/:id", deleteProduct);
+router.post("/products/:id/codes", addCodes);
+router.patch("/products/:id/stock", setProductStock);
+router.get("/users", adminUsers);
+router.get("/reviews", adminReviews);
+router.patch("/products/:id/reviews/:reviewId/reply", replyToProductReview);
+router.delete("/products/:id/reviews/:reviewId", deleteProductReview);
+router.get("/product-activity", productActivity);
+router.get("/orders", adminOrders);
+router.post("/orders/:id/confirm-payment", confirmOrderPayment);
+router.post("/orders/:id/cancel", cancelOrder);
+export default router;
