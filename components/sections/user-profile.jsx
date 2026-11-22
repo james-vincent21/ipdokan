@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { downloadInvoicePdf } from "@/lib/invoice-download";
 
@@ -10,6 +11,15 @@ export function UserProfile() {
   const [orders, setOrders] = useState([]);
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
+  const [copiedCode, setCopiedCode] = useState("");
+
+  async function copyCode(code) {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      window.setTimeout(() => setCopiedCode((current) => (current === code ? "" : current)), 1800);
+    } catch { setMessage("Copy failed. Select the code and copy it manually."); }
+  }
 
   useEffect(() => {
     let active = true;
@@ -46,29 +56,62 @@ export function UserProfile() {
     return () => { active = false; window.clearTimeout(retryTimer); };
   }, []);
 
+  const codesOf = (order) => (order.deliveredCodes?.length ? order.deliveredCodes : order.deliveredCode ? [order.deliveredCode] : []);
+  const paidOrders = orders.filter((order) => order.status === "paid");
+  const stats = [
+    ["Orders", orders.length],
+    ["Completed", paidOrders.length],
+    ["Codes received", paidOrders.reduce((sum, order) => sum + codesOf(order).length, 0)],
+  ];
+  const statusLabel = (order) => order.status === "pending" ? "Awaiting payment" : order.status === "processing" ? "Processing" : order.status === "cancelled" ? "Cancelled" : "Paid";
+
   return (
     <main className="profile-page">
-      <section className="profile-panel profile-panel-simple" aria-labelledby="profile-title">
-        {status === "loading" && <p className="profile-message">Loading your profile…</p>}
-        {status === "error" && <><p className="profile-message" role="status">{message}</p><a className="profile-home-link" href="/">Return to sign in</a></>}
+      <div className="profile-shell">
+        {status === "loading" && <section className="profile-card profile-state" aria-busy="true"><span className="profile-spinner" aria-hidden="true" /><p className="profile-message">Loading your profile…</p></section>}
+        {status === "error" && <section className="profile-card profile-state"><p className="profile-message" role="status">{message}</p><Link className="profile-home-link" href="/">Return to sign in</Link></section>}
         {status === "ready" && <>
-          <span className="auth-kicker">MY ACCOUNT</span>
-          <h1 id="profile-title">Your profile</h1>
-          <div className="profile-identity">
-            {user.image ? <img src={user.image} alt="" /> : <span aria-hidden="true">{(user.name || user.email || "U").slice(0, 1).toUpperCase()}</span>}
-            <div><strong>{user.name}</strong><span>{user.email}</span></div>
-          </div>
-          <section className="profile-orders-section profile-orders" aria-labelledby="profile-orders-title">
-            <h2 id="profile-orders-title">Purchase history</h2>
-            {orders.length ? <div className="profile-order-list">{orders.map((order) => <article className="profile-order" key={order.id}>
-              <div><strong>{order.productName}{order.variantName ? ` — ${order.variantName}` : ""}{order.quantity > 1 ? ` × ${order.quantity}` : ""}</strong><span>{order.codeNumber} · {new Date(order.createdAt).toLocaleString()}</span><span>Invoice ID: {order.invoiceId || `IPD-${String(order.id).toUpperCase()}`}</span></div>
-              <span className={`order-status order-status-${order.status}`}>{order.status === "pending" ? "Reserved — awaiting payment" : order.status === "cancelled" ? "Cancelled — stock restored" : order.status}</span>
-              {(order.deliveredCodes?.length ? order.deliveredCodes : order.deliveredCode ? [order.deliveredCode] : []).map((code) => <code className="delivered-code" key={code}>{code}</code>)}
-              {order.status === "paid" && <button type="button" className="invoice-download" onClick={() => { if (!downloadInvoicePdf(order, user)) setMessage("Allow pop-ups to download your invoice as a PDF."); }}>Download invoice PDF</button>}
-            </article>)}</div> : <p className="profile-empty-orders">No purchases yet.</p>}
+          <section className="profile-card profile-hero" aria-labelledby="profile-title">
+            <div className="profile-identity">
+              {user.image ? <img src={user.image} alt="" /> : <span aria-hidden="true">{(user.name || user.email || "U").slice(0, 1).toUpperCase()}</span>}
+              <div>
+                <span className="auth-kicker">MY ACCOUNT</span>
+                <h1 id="profile-title">{user.name || "Your profile"}</h1>
+                <p>{user.email}</p>
+              </div>
+            </div>
+            <dl className="profile-stats">{stats.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+          </section>
+
+          {message && <p className="profile-notice" role="status">{message}</p>}
+
+          <section className="profile-card profile-orders" aria-labelledby="profile-orders-title">
+            <header className="profile-section-head"><h2 id="profile-orders-title">Purchase history</h2>{orders.length > 0 && <span>{orders.length} order{orders.length === 1 ? "" : "s"}</span>}</header>
+            {orders.length ? <div className="profile-order-list">{orders.map((order) => {
+              const codes = codesOf(order);
+              return <article className={`profile-order is-${order.status}`} key={order.id}>
+                <header className="profile-order-head">
+                  <div>
+                    <strong>{order.productName}{order.variantName ? <em> · {order.variantName}</em> : null}</strong>
+                    <span>{new Date(order.createdAt).toLocaleString()}{order.quantity > 1 ? ` · Qty ${order.quantity}` : ""}</span>
+                  </div>
+                  <span className={`order-status order-status-${order.status}`}>{statusLabel(order)}</span>
+                </header>
+                <div className="profile-order-meta">
+                  <span>Invoice <b>{order.invoiceId || `IPD-${String(order.id).toUpperCase()}`}</b></span>
+                  {order.amount !== undefined && <span>Total <b>{order.currency} {Number(order.amount).toFixed(2)}</b></span>}
+                </div>
+                {codes.length > 0 && <div className="profile-codes">
+                  <span className="profile-codes-label">{codes.length === 1 ? "Your code" : `Your ${codes.length} codes`}</span>
+                  {codes.map((code) => <div className="profile-code" key={code}><code>{code}</code><button type="button" onClick={() => copyCode(code)} aria-label={`Copy code ${code}`}>{copiedCode === code ? "Copied" : "Copy"}</button></div>)}
+                </div>}
+                {order.status === "pending" && <p className="profile-order-hint">Your codes will appear here as soon as payment is confirmed.</p>}
+                {order.status === "paid" && <footer><button type="button" className="invoice-download" onClick={() => { if (!downloadInvoicePdf(order, user)) setMessage("Allow pop-ups to download your invoice as a PDF."); }}>Download invoice PDF</button></footer>}
+              </article>;
+            })}</div> : <div className="profile-empty-orders"><strong>No purchases yet</strong><p>Products you buy will show up here with their codes and invoices.</p><Link className="profile-home-link" href="/catalog">Browse products</Link></div>}
           </section>
         </>}
-      </section>
+      </div>
     </main>
   );
 }

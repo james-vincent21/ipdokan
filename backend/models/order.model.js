@@ -19,7 +19,7 @@ const orderSchema = new mongoose.Schema({
   paymentReference: { type: String, default: "" },
   status: { type: String, enum: ["pending", "processing", "paid", "cancelled"], default: "pending", index: true },
   deliveredCode: { type: String, default: "" },
-  deliveredCodes: { type: [String], default: [] },
+  deliveredCodes: { type: [String], default: [], index: true },
   paidAt: { type: Date, default: null },
 }, { timestamps: true });
 

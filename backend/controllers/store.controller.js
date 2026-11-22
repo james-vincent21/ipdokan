@@ -6,6 +6,40 @@ import { AdminEmail } from "../models/admin-email.model.js";
 import { ProductActivity } from "../models/product-activity.model.js";
 import { config } from "../config/env.js";
 
+function parseCodeList(input) {
+  const list = Array.isArray(input) ? input : typeof input === "string" ? input.split(/\r?\n/) : [];
+  return list.filter((code) => typeof code === "string").map((code) => code.trim()).filter(Boolean);
+}
+
+function findDuplicateCode(values) {
+  const seen = new Set();
+  for (const value of values) {
+    if (seen.has(value)) return value;
+    seen.add(value);
+  }
+  return "";
+}
+
+// A code may never be sold twice: it is "used" if any product holds it (available, reserved, or sold)
+// or any order has already delivered it, even after its variant or product was deleted.
+async function findUsedCode(codes) {
+  const list = [...new Set(codes)];
+  if (!list.length) return "";
+  const [product, order] = await Promise.all([
+    Product.findOne({ $or: [{ "codes.value": { $in: list } }, { "variants.codes.value": { $in: list } }, { "variants.secretCode": { $in: list } }] }, { codes: 1, variants: 1 }).lean(),
+    Order.findOne({ $or: [{ deliveredCodes: { $in: list } }, { deliveredCode: { $in: list } }] }, { deliveredCodes: 1, deliveredCode: 1 }).lean(),
+  ]);
+  const used = new Set([
+    ...(product?.codes || []).map((code) => code.value),
+    ...(product?.variants || []).flatMap((variant) => [...(variant.codes || []).map((code) => code.value), variant.secretCode]),
+    ...(order?.deliveredCodes || []),
+    order?.deliveredCode,
+  ].filter(Boolean));
+  return list.find((code) => used.has(code)) || "";
+}
+
+const usedCodeMessage = (code) => `The code "${code}" has already been added or sold before. Each code can only be used once.`;
+
 function getInvoiceId(order) {
   if (order.invoiceId) return order.invoiceId;
   const date = new Date(order.createdAt || Date.now());
@@ -187,6 +221,7 @@ export async function createOrder(req, res, next) {
     const variant = req.body?.variantId ? product.variants.id(req.body.variantId) : null;
     if (req.body?.variantId && !variant) return res.status(404).json({ error: "Product variant not found." });
     const sharedVariantStock = Boolean(variant && variant.stockQuantity !== null && variant.stockQuantity !== undefined);
+    if (sharedVariantStock && quantity > 1) return res.status(409).json({ error: `${variant.name} has only one shared code, so it can be bought one at a time. Ask the store to add separate codes for this plan.` });
     if (sharedVariantStock) {
       if (variant.stockQuantity < quantity) return res.status(409).json({ error: `Only ${variant.stockQuantity} unit(s) are currently available.` });
       const updated = await Product.findOneAndUpdate(
@@ -444,14 +479,15 @@ export async function addProduct(req, res, next) {
       const priceBdt = Number(variant.priceBdt);
       if (!Number.isFinite(priceUsd) || priceUsd < 0) throw new Error(`${label} (${name}): USD price is required.`);
       if (!Number.isFinite(priceBdt) || priceBdt < 0) throw new Error(`${label} (${name}): BDT price is required.`);
-      const secretCode = typeof variant.secretCode === "string" ? variant.secretCode.trim() : "";
-      const variantQuantity = Number(variant.quantity ?? 0);
-      if (!Number.isInteger(variantQuantity) || variantQuantity < 0 || variantQuantity > 10000) throw new Error(`${label} (${name}): Quantity must be a whole number from 0 to 10000.`);
-      if (!secretCode) throw new Error(`${label} (${name}): One secret code is required.`);
-      normalizedVariants.push({ name, price, priceUsd, priceBdt, stockQuantity: variantQuantity, secretCode, codes: [] });
+      const codes = parseCodeList(variant.codes);
+      if (!codes.length) throw new Error(`${label} (${name}): Add at least one code (one code per line).`);
+      if (codes.length > 10000) throw new Error(`${label} (${name}): A variant can hold at most 10000 codes.`);
+      normalizedVariants.push({ name, price, priceUsd, priceBdt, stockQuantity: null, secretCode: "", codes: codes.map((value) => ({ value })) });
     }
-    const allCodes = normalizedVariants.map((variant) => variant.secretCode);
-    if (new Set(allCodes).size !== allCodes.length) throw new Error("Secret codes are duplicated across the main product or variants. Each code must be unique.");
+    const duplicate = findDuplicateCode(normalizedVariants.flatMap((variant) => variant.codes.map((code) => code.value)));
+    if (duplicate) throw new Error(`The code "${duplicate}" is entered more than once. Each code must be unique.`);
+    const usedCode = await findUsedCode(normalizedVariants.flatMap((variant) => variant.codes.map((code) => code.value)));
+    if (usedCode) throw new Error(usedCodeMessage(usedCode));
     const product = await Product.create({ ...fields, codes: [], variants: normalizedVariants });
     await ProductActivity.create({ productId: String(product._id), productName: product.name, action: "added", adminEmail: String(req.user.email || "").toLowerCase(), details: "Product created" });
     const stockAvailable = product.variants.reduce((sum, variant) => sum + (variant.stockQuantity ?? variant.codes.length), 0);
@@ -472,15 +508,17 @@ export async function editProduct(req, res, next) {
       const keptIds = new Set(req.body.variants.map((input) => input.id).filter(Boolean));
       for (const existing of [...product.variants]) {
         if (!keptIds.has(String(existing._id))) {
-          if (existing.codes.some((code) => code.status !== "available")) return res.status(409).json({ error: "A variant cannot be removed after it has reserved or sold codes." });
+          if (existing.codes.some((code) => code.status === "reserved")) return res.status(409).json({ error: `${existing.name} has codes reserved by unpaid orders. Confirm or cancel those orders before removing this variant.` });
+          const openOrder = await Order.exists({ variantId: existing._id, status: { $in: ["pending", "processing"] } });
+          if (openOrder) return res.status(409).json({ error: `${existing.name} has unpaid orders. Confirm or cancel those orders before removing this variant.` });
           product.variants.pull(existing._id);
         }
       }
-      const allExistingCodes = [
+      const allExistingCodes = new Set([
         ...product.codes.map((code) => code.value),
         ...product.variants.flatMap((item) => item.codes.map((code) => code.value)),
         ...product.variants.map((item) => item.secretCode).filter(Boolean),
-      ];
+      ]);
       const normalized = [];
       for (let index = 0; index < req.body.variants.length; index += 1) {
         const input = req.body.variants[index];
@@ -500,22 +538,34 @@ export async function editProduct(req, res, next) {
           variant.price = price;
           variant.priceUsd = priceUsd;
           variant.priceBdt = priceBdt;
-          if (Object.hasOwn(input, "quantity")) {
-            const quantity = Number(input.quantity);
-            if (!Number.isInteger(quantity) || quantity < 0 || quantity > 10000) return res.status(400).json({ error: `${label} (${name}): Quantity must be a whole number from 0 to 10000.` });
-            variant.stockQuantity = quantity;
+          const newCodes = parseCodeList(input.newCodes);
+          if (newCodes.length) {
+            const duplicate = findDuplicateCode(newCodes) || newCodes.find((code) => allExistingCodes.has(code));
+            if (duplicate) return res.status(409).json({ error: `${label} (${name}): The code "${duplicate}" already exists. Each code must be unique.` });
+            const usedCode = await findUsedCode(newCodes);
+            if (usedCode) return res.status(409).json({ error: `${label} (${name}): ${usedCodeMessage(usedCode)}` });
+            if (variant.codes.length + newCodes.length > 10000) return res.status(400).json({ error: `${label} (${name}): A variant can hold at most 10000 codes.` });
+            const usesOldQuantityStock = variant.stockQuantity !== null && variant.stockQuantity !== undefined;
+            if (usesOldQuantityStock) {
+              const openOrder = await Order.exists({ variantId: variant._id, status: { $in: ["pending", "processing"] } });
+              if (openOrder) return res.status(409).json({ error: `${label} (${name}): This plan still has unpaid orders from the old quantity stock. Confirm or cancel them before adding codes.` });
+              variant.stockQuantity = null;
+              variant.secretCode = "";
+            }
+            variant.codes.push(...newCodes.map((value) => ({ value })));
+            newCodes.forEach((code) => allExistingCodes.add(code));
           }
-          if (typeof input.secretCode === "string") variant.secretCode = input.secretCode.trim();
-          if (!variant.secretCode) return res.status(400).json({ error: `${label} (${name}): One secret code is required.` });
           normalized.push(variant);
         } else {
-          const quantity = Number(input.quantity ?? 0);
-          const secretCode = typeof input.secretCode === "string" ? input.secretCode.trim() : "";
-          if (!Number.isInteger(quantity) || quantity < 0 || quantity > 10000) return res.status(400).json({ error: `${label} (${name}): Quantity must be a whole number from 0 to 10000.` });
-          if (!secretCode) return res.status(400).json({ error: `${label} (${name}): One secret code is required.` });
-          if (allExistingCodes.includes(secretCode)) return res.status(409).json({ error: `${label} (${name}): This secret code is duplicated across the product or variants. Use a unique code.` });
-          allExistingCodes.push(secretCode);
-          normalized.push({ name, price, priceUsd, priceBdt, stockQuantity: quantity, secretCode, codes: [] });
+          const codes = parseCodeList(input.codes);
+          if (!codes.length) return res.status(400).json({ error: `${label} (${name}): Add at least one code (one code per line).` });
+          if (codes.length > 10000) return res.status(400).json({ error: `${label} (${name}): A variant can hold at most 10000 codes.` });
+          const duplicate = findDuplicateCode(codes) || codes.find((code) => allExistingCodes.has(code));
+          if (duplicate) return res.status(409).json({ error: `${label} (${name}): The code "${duplicate}" already exists. Each code must be unique.` });
+          const usedCode = await findUsedCode(codes);
+          if (usedCode) return res.status(409).json({ error: `${label} (${name}): ${usedCodeMessage(usedCode)}` });
+          codes.forEach((code) => allExistingCodes.add(code));
+          normalized.push({ name, price, priceUsd, priceBdt, stockQuantity: null, secretCode: "", codes: codes.map((value) => ({ value })) });
         }
       }
       if (normalized.length) product.variants = normalized;
@@ -550,6 +600,8 @@ export async function addCodes(req, res, next) {
     const existing = new Set(product.codes.map((item) => item.value));
     const uniqueNewCodes = cleaned.filter((code) => !existing.has(code));
     if (!uniqueNewCodes.length) return res.status(409).json({ error: "Those codes are already in this product's inventory." });
+    const usedCode = await findUsedCode(uniqueNewCodes);
+    if (usedCode) return res.status(409).json({ error: usedCodeMessage(usedCode) });
     product.codes.push(...uniqueNewCodes.map((value) => ({ value })));
     await product.save();
     await ProductActivity.create({ productId: String(product._id), productName: product.name, action: "codes_added", adminEmail: String(req.user.email || "").toLowerCase(), details: `${uniqueNewCodes.length} inventory code(s) added` });
@@ -588,6 +640,8 @@ export async function setProductStock(req, res, next) {
         ...product.variants.flatMap((item) => item.codes.map((code) => code.value)),
       ]);
       if (codes.length !== difference || new Set(codes).size !== codes.length || codes.some((code) => existing.has(code))) return res.status(400).json({ error: `Add exactly ${difference} new unique code(s) to increase stock to ${quantity}.` });
+      const usedCode = await findUsedCode(codes);
+      if (usedCode) return res.status(409).json({ error: usedCodeMessage(usedCode) });
       inventory.push(...codes.map((value) => ({ value })));
     } else if (difference < 0) {
       let remove = -difference;

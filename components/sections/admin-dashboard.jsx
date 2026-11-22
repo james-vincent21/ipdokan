@@ -1,13 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { adminDashboardCache, clearAdminDashboardCache, setAdminDashboardCache } from "@/lib/admin-dashboard-cache";
 import { downloadInvoicePdf } from "@/lib/invoice-download";
+import { OrderFilterBar, buildRevenueChart, defaultOrderFilter, filterOrders, isFilterActive, summarizeOrders, variantOptions } from "./admin-order-filter";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 const tabs = ["Overview", "Products", "Orders", "Users", "Reviews", "Product history", "Admins"];
 const productCategories = ["Discount Proxy Panel", "Monthly ISP Proxy", "Dedicated Servers", "Private Proxy", "Residential Static Proxy", "VPS"];
+const parseCodes = (text) => String(text || "").split(/\r?\n/).map((code) => code.trim()).filter(Boolean);
+const emptyVariant = { name: "", capacity: "", unit: "GB", price: "", priceUsd: "", priceBdt: "", codesText: "" };
 const emptyProduct = { name: "", codeNumber: "", description: "", imageUrl: "", category: "Discount Proxy Panel", brand: "", price: "", priceUsd: "", priceBdt: "", currency: "USD", discountPercent: "0", rating: "0", reviewCount: "0", showInPopular: true, popularOrder: "0", active: true, quantity: "10", inventoryCodes: "", variants: [] };
 
 export function AdminDashboard() {
@@ -28,6 +31,15 @@ export function AdminDashboard() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [orderFilter, setOrderFilter] = useState(defaultOrderFilter);
+  const [chartCurrency, setChartCurrency] = useState("USD");
+  const filteredOrders = useMemo(() => filterOrders(orders, orderFilter), [orders, orderFilter]);
+  const orderSummary = useMemo(() => summarizeOrders(filteredOrders), [filteredOrders]);
+  const revenueChart = useMemo(() => buildRevenueChart(filteredOrders, orderFilter, chartCurrency), [filteredOrders, orderFilter, chartCurrency]);
+  const filterVariants = useMemo(() => variantOptions(orders, products), [orders, products]);
+  const filterActive = isFilterActive(orderFilter);
+  const overviewLimit = filterActive ? 50 : 8;
+  const filterBar = <OrderFilterBar filter={orderFilter} onChange={setOrderFilter} variants={filterVariants} total={orders.length} shown={filteredOrders.length} />;
 
   const api = useCallback(async (path, options = {}) => {
     const response = await fetch(`${apiUrl}/api${path}`, { ...options, credentials: "include", headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...options.headers } });
@@ -102,16 +114,16 @@ export function AdminDashboard() {
         if (!variant.price || !Number.isFinite(Number(variant.price)) || Number(variant.price) < 0) throw new Error(`${label}: Price is required and must be a valid number.`);
         if (variant.priceUsd === "" || !Number.isFinite(Number(variant.priceUsd)) || Number(variant.priceUsd) < 0) throw new Error(`${label}: USD price is required.`);
         if (variant.priceBdt === "" || !Number.isFinite(Number(variant.priceBdt)) || Number(variant.priceBdt) < 0) throw new Error(`${label}: BDT price is required.`);
-        if (!editingId) {
-          const quantity = Number(variant.quantity);
-          if (!Number.isInteger(quantity) || quantity < 0) throw new Error(`${label}: Quantity must be a whole number of 0 or more.`);
-        }
-        if (!String(variant.secretCode || "").trim()) throw new Error(`${label}: One secret code is required.`);
+        if (!variant.id && !parseCodes(variant.codesText).length) throw new Error(`${label}: Add at least one code (one code per line).`);
       }
+      const enteredCodes = product.variants.flatMap((variant) => parseCodes(variant.codesText));
+      const duplicateCode = enteredCodes.find((code, index) => enteredCodes.indexOf(code) !== index);
+      if (duplicateCode) throw new Error(`The code "${duplicateCode}" is entered more than once. Each code must be unique.`);
       const variants = product.variants.map((variant) => {
         const name = variant.capacity ? `${String(variant.capacity).trim()} ${variant.unit || "GB"}` : String(variant.name || "").trim();
-        if (variant.id) return { id: variant.id, name, price: Number(variant.price), priceUsd: Number(variant.priceUsd), priceBdt: Number(variant.priceBdt), quantity: Number(variant.quantity ?? variant.available ?? 0), secretCode: String(variant.secretCode || "").trim() };
-        return { name, price: Number(variant.price), priceUsd: Number(variant.priceUsd), priceBdt: Number(variant.priceBdt), quantity: Number(variant.quantity || 0), secretCode: String(variant.secretCode || "").trim() };
+        const codes = parseCodes(variant.codesText);
+        if (variant.id) return { id: variant.id, name, price: Number(variant.price), priceUsd: Number(variant.priceUsd), priceBdt: Number(variant.priceBdt), newCodes: codes };
+        return { name, price: Number(variant.price), priceUsd: Number(variant.priceUsd), priceBdt: Number(variant.priceBdt), codes };
       });
       const lowestUsdPrice = Math.min(...variants.map((variant) => variant.priceUsd));
       const lowestBdtPrice = Math.min(...variants.map((variant) => variant.priceBdt));
@@ -158,7 +170,7 @@ export function AdminDashboard() {
   function edit(productToEdit) {
     setEditingId(productToEdit._id); setProduct({ name: productToEdit.name, codeNumber: productToEdit.codeNumber, description: productToEdit.description || "", imageUrl: productToEdit.imageUrl || "", category: productToEdit.category || "Other", brand: productToEdit.brand || "", price: String(productToEdit.price), priceUsd: String(productToEdit.priceUsd ?? productToEdit.price ?? ""), priceBdt: String(productToEdit.priceBdt ?? ""), currency: productToEdit.currency || "USD", discountPercent: String(productToEdit.discountPercent || 0), rating: String(productToEdit.rating || 0), reviewCount: String(productToEdit.reviewCount || 0), showInPopular: Boolean(productToEdit.showInPopular), popularOrder: String(productToEdit.popularOrder || 0), active: productToEdit.active, quantity: String(productToEdit.stockAvailable), inventoryCodes: "", variants: (productToEdit.variants || []).map((variant) => {
       const match = String(variant.name || "").trim().match(/^(\d+(?:\.\d+)?)\s*(MB|GB)$/i);
-      return { id: variant._id, name: variant.name, capacity: match?.[1] || "", unit: match?.[2]?.toUpperCase() || "GB", price: String(variant.price), priceUsd: String(variant.priceUsd ?? variant.price ?? ""), priceBdt: String(variant.priceBdt ?? ""), secretCode: variant.secretCode || "", available: variant.stockQuantity ?? variant.codes.filter((code) => code.status === "available").length };
+      return { id: variant._id, name: variant.name, capacity: match?.[1] || "", unit: match?.[2]?.toUpperCase() || "GB", price: String(variant.price), priceUsd: String(variant.priceUsd ?? variant.price ?? ""), priceBdt: String(variant.priceBdt ?? ""), codesText: "", legacyStock: variant.stockQuantity !== null && variant.stockQuantity !== undefined, available: variant.stockQuantity ?? variant.codes.filter((code) => code.status === "available").length };
     }) }); setCodes(""); setStockVariantId(productToEdit.variants?.[0]?._id || ""); setStockQuantity(String(productToEdit.variants?.[0]?.stockQuantity ?? productToEdit.variants?.[0]?.codes?.filter((code) => code.status === "available").length ?? productToEdit.stockAvailable));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -171,9 +183,11 @@ export function AdminDashboard() {
       {message && <p className="admin-notice" role="status">{message}</p>}
       {loading ? <p className="admin-loading">Loading admin data…</p> : error && !data.stats ? <p className="admin-loading">Sign in with an authorized admin account to continue.</p> : <>
         {tab === "Overview" && <>
-          <section className="admin-stat-grid">{[["Products", data.stats.products], ["Users", data.stats.users], ["Orders", data.stats.orders], ["Paid revenue", `$${Number(data.stats.revenue || 0).toFixed(2)}`]].map(([label, value]) => <article className="admin-stat" key={label}><span>{label}</span><strong>{value ?? 0}</strong></article>)}</section>
-          <section className="admin-card admin-chart-card"><div className="admin-card-heading"><div><h2>Revenue</h2><p>Paid orders over the last six months</p></div></div><div className="admin-chart"><ResponsiveContainer width="100%" height="100%"><AreaChart data={data.chart}><defs><linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#5687ff" stopOpacity={0.4} /><stop offset="95%" stopColor="#5687ff" stopOpacity={0} /></linearGradient></defs><CartesianGrid stroke="rgba(255,255,255,.08)" vertical={false} /><XAxis dataKey="month" stroke="#8894aa" tickLine={false} axisLine={false} /><YAxis stroke="#8894aa" tickLine={false} axisLine={false} /><Tooltip contentStyle={{ background: "#111827", border: "1px solid #29364d", borderRadius: 10 }} /><Area type="monotone" dataKey="revenue" stroke="#78a0ff" strokeWidth={2} fill="url(#revenueFill)" /></AreaChart></ResponsiveContainer></div></section>
-          <section className="admin-card"><h2>Recent orders</h2><OrderTable orders={data.recentOrders} /></section>
+          {filterBar}
+          <section className="admin-stat-grid">{[["Orders", orderSummary.orders], ["Units sold", orderSummary.paidUnits], ["Revenue (USD)", `$${orderSummary.revenue.USD.toFixed(2)}`], ["Revenue (BDT)", `৳${orderSummary.revenue.BDT.toFixed(2)}`]].map(([label, value]) => <article className="admin-stat" key={label}><span>{label}</span><strong>{value}</strong></article>)}</section>
+          <p className="admin-filter-note">{data.stats.products ?? 0} products · {data.stats.users ?? 0} users · {orderSummary.pending} pending order(s) in this view</p>
+          <section className="admin-card admin-chart-card"><div className="admin-card-heading"><div><h2>Revenue</h2><p>Paid orders {revenueChart.daily ? "per day" : "per month"}{filterActive ? " for the current filter" : ""}</p></div><div className="admin-currency-toggle" role="group" aria-label="Chart currency">{["USD", "BDT"].map((currency) => <button key={currency} type="button" className={chartCurrency === currency ? "is-active" : ""} aria-pressed={chartCurrency === currency} onClick={() => setChartCurrency(currency)}>{currency}</button>)}</div></div><div className="admin-chart"><ResponsiveContainer width="100%" height="100%"><AreaChart data={revenueChart.data}><defs><linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#5687ff" stopOpacity={0.4} /><stop offset="95%" stopColor="#5687ff" stopOpacity={0} /></linearGradient></defs><CartesianGrid stroke="rgba(255,255,255,.08)" vertical={false} /><XAxis dataKey="label" stroke="#8894aa" tickLine={false} axisLine={false} minTickGap={16} /><YAxis stroke="#8894aa" tickLine={false} axisLine={false} /><Tooltip contentStyle={{ background: "#111827", border: "1px solid #29364d", borderRadius: 10 }} formatter={(value, name) => name === "revenue" ? [`${chartCurrency === "BDT" ? "৳" : "$"}${Number(value).toFixed(2)}`, "Revenue"] : [value, name]} /><Area type="monotone" dataKey="revenue" stroke="#78a0ff" strokeWidth={2} fill="url(#revenueFill)" /></AreaChart></ResponsiveContainer></div></section>
+          <section className="admin-card"><h2>{filterActive ? "Matching orders" : "Recent orders"}</h2><OrderTable orders={filteredOrders.slice(0, overviewLimit)} emptyText={filterActive ? "No orders match these filters." : undefined} />{filteredOrders.length > overviewLimit && <button type="button" className="admin-secondary admin-view-all" onClick={() => setTab("Orders")}>View all {filteredOrders.length} in Orders</button>}</section>
         </>}
         {tab === "Products" && <div className="admin-products-layout">
           <section className="admin-card"><h2>{editingId ? "Edit product" : "Add product"}</h2><form className="admin-form" onSubmit={saveProduct}>
@@ -188,7 +202,7 @@ export function AdminDashboard() {
             <label>Popular display order <span className="admin-help-text">Smaller numbers appear first.</span><input type="number" min="0" max="10000" step="1" value={product.popularOrder} onChange={(event) => setProduct({ ...product, popularOrder: event.target.value })} /></label>
             <fieldset className="admin-variant-editor">
               <legend>Variants {editingId ? "(edit plan details)" : "(required)"}</legend>
-              <p className="admin-help-text">Set the price for each plan here. Example: 5 GB / USD $5 / ৳500 / 12 available / one secret code.</p>
+              <p className="admin-help-text">Set the price for each plan here, then paste its codes one per line. The number of codes is the plan&apos;s quantity, and each buyer gets their own code after payment.</p>
               {product.variants.map((variant, index) => <div className="admin-variant-row" key={variant.id || index}>
                 <div className="admin-variant-plan-row">
                   <label>Capacity<input required type="number" min="0" step="0.1" value={variant.capacity || ""} placeholder="9" onChange={(event) => setProduct({ ...product, variants: product.variants.map((item, i) => i === index ? { ...item, capacity: event.target.value } : item) })} /></label>
@@ -197,33 +211,43 @@ export function AdminDashboard() {
                   <label>BDT price<input required type="number" min="0" step="0.01" value={variant.priceBdt || ""} placeholder="500" onChange={(event) => setProduct({ ...product, variants: product.variants.map((item, i) => i === index ? { ...item, priceBdt: event.target.value } : item) })} /></label>
                   <button type="button" className="admin-secondary admin-variant-remove" onClick={() => setProduct({ ...product, variants: product.variants.filter((_, i) => i !== index) })}>Remove</button>
                 </div>
-                <div className="admin-variant-stock-row">
-                  <label>Available quantity<input required type="number" min="0" max="10000" value={variant.quantity ?? variant.available ?? 0} onChange={(event) => setProduct({ ...product, variants: product.variants.map((item, i) => i === index ? { ...item, quantity: event.target.value } : item) })} /></label>
-                  <label>Secret code <span className="admin-help-text">Revealed after payment</span><input required value={variant.secretCode || ""} placeholder="One code for this plan" onChange={(event) => setProduct({ ...product, variants: product.variants.map((item, i) => i === index ? { ...item, secretCode: event.target.value } : item) })} /></label>
-                </div>
+                {(() => {
+                  const entered = parseCodes(variant.codesText);
+                  const unique = new Set(entered).size;
+                  const current = variant.id && !variant.legacyStock ? Number(variant.available || 0) : 0;
+                  return <div className="admin-variant-codes-row">
+                    <label>{variant.id ? "Add new codes" : "Codes"} <span className="admin-help-text">One code per line. Each line adds 1 to the quantity.</span><textarea rows={4} required={!variant.id} value={variant.codesText || ""} placeholder={"CODE-AAAA-1111\nCODE-BBBB-2222\nCODE-CCCC-3333"} onChange={(event) => setProduct({ ...product, variants: product.variants.map((item, i) => i === index ? { ...item, codesText: event.target.value } : item) })} /></label>
+                    <p className="admin-variant-available">
+                      {variant.id && variant.legacyStock
+                        ? (entered.length ? `Switches to code stock: quantity = ${entered.length}` : `Old quantity stock: ${variant.available} available. Adding codes replaces it.`)
+                        : variant.id ? `Quantity: ${current} available + ${entered.length} new = ${current + entered.length}` : `Quantity: ${entered.length}`}
+                      {unique !== entered.length && <span className="admin-variant-duplicate"> · {entered.length - unique} duplicate line(s)</span>}
+                    </p>
+                  </div>;
+                })()}
               </div>)}
-              <button type="button" className="admin-secondary" onClick={() => setProduct({ ...product, variants: [...product.variants, { name: "", capacity: "", unit: "GB", price: "", priceUsd: "", priceBdt: "", quantity: "0", secretCode: "" }] })}>Add variant</button>
+              <button type="button" className="admin-secondary" onClick={() => setProduct({ ...product, variants: [...product.variants, { ...emptyVariant }] })}>Add variant</button>
             </fieldset>
             {editingId && <label className="admin-checkbox"><input type="checkbox" checked={product.active} onChange={(event) => setProduct({ ...product, active: event.target.checked })} />Visible in catalog</label>}
             <div className="admin-form-actions"><button className="auth-submit" type="submit">{editingId ? "Save product" : "Add product"}</button>{editingId && <button type="button" className="admin-secondary" onClick={() => { setEditingId(""); setProduct(emptyProduct); }}>Cancel</button>}</div>
           </form>
           {editingId && <form className="admin-form admin-code-form" onSubmit={saveStock}>
             <h3>Set available quantity</h3>
-            <p>Set how many units are available for this plan. The secret code was already set inside the variant and is revealed after payment.</p>
-            {product.variants.length > 0 && <label>Plan / variant<select value={stockVariantId} onChange={(event) => {
+            <p>Lower the number to remove unsold codes. To raise it, paste exactly that many new codes below (or add them in the variant above).</p>
+            {product.variants.some((variant) => variant.id) && <label>Plan / variant<select value={stockVariantId} onChange={(event) => {
               const variantId = event.target.value;
               setStockVariantId(variantId);
               const variant = product.variants.find((item) => item.id === variantId);
               setStockQuantity(String(variant?.available || 0));
               setCodes("");
-            }}>{product.variants.map((variant) => <option key={variant.id} value={variant.id}>{variant.name}</option>)}</select></label>}
+            }}>{product.variants.filter((variant) => variant.id).map((variant) => <option key={variant.id} value={variant.id}>{variant.name}{variant.legacyStock ? " (old: 1 shared code)" : ""}</option>)}</select></label>}
             <label>Available quantity<input type="number" min="0" max="10000" step="1" required value={stockQuantity} onChange={(event) => setStockQuantity(event.target.value)} /></label>
-            {!product.variants.length && <label>New secret codes <span className="admin-help-text">Required only when increasing main-product quantity.</span><textarea rows={5} value={codes} onChange={(event) => setCodes(event.target.value)} placeholder="Required only when increasing quantity" /></label>}
+            {(!product.variants.length || !product.variants.find((item) => item.id === stockVariantId)?.legacyStock) && <label>New codes <span className="admin-help-text">One per line. Required only when increasing quantity.</span><textarea rows={5} value={codes} onChange={(event) => setCodes(event.target.value)} placeholder="Required only when increasing quantity" /></label>}
             <button type="submit" className="admin-secondary">Save quantity</button>
           </form>}</section>
           <section className="admin-card"><h2>Product inventory</h2><div className="admin-product-list">{products.map((item) => <article className="admin-product-row" key={item.id}><div className="admin-product-thumb">{item.imageUrl ? <img src={item.imageUrl} alt="" /> : (item.name?.trim()?.charAt(0).toUpperCase() || "P")}</div><div className="admin-product-info"><strong>{item.name}</strong><span>{item.category || "Other"} · {item.codeNumber} · {item.currency} {item.price} · {item.stockAvailable} available / {item.stockReserved || 0} reserved / {item.stockSold} sold</span>{item.variants?.map((variant) => <small key={variant._id}>{variant.name} · {item.currency} {variant.price} · {variant.stockQuantity ?? variant.codes.filter((code) => code.status === "available").length} available</small>)}<small>{item.active ? "Visible" : "Hidden"}{item.showInPopular ? ` · Popular #${item.popularOrder || 0}` : ""}</small></div><div className="admin-product-actions"><button type="button" className="admin-secondary" onClick={() => edit(item)}>Edit</button><button type="button" className="admin-delete" onClick={() => deleteProduct(item)}>Delete</button></div></article>)}{!products.length && <p className="admin-empty">No products yet.</p>}</div></section>
         </div>}
-        {tab === "Orders" && <section className="admin-card"><h2>Orders</h2><OrderTable orders={orders} onMarkPaid={markPaid} onCancel={cancelOrder} /></section>}
+        {tab === "Orders" && <>{filterBar}<section className="admin-card"><h2>Orders <small>({filteredOrders.length})</small></h2><OrderTable orders={filteredOrders} onMarkPaid={markPaid} onCancel={cancelOrder} emptyText={filterActive ? "No orders match these filters." : undefined} /></section></>}
         {tab === "Users" && <section className="admin-card"><h2>Users <small>({users.length})</small></h2><div className="admin-table-scroll"><table className="admin-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Purchases</th><th>Paid total</th><th>Purchase history</th><th>Joined</th></tr></thead><tbody>{users.map((user) => <tr key={user.id}><td>{user.name || "—"}</td><td>{user.email}</td><td>{user.phone || "—"}</td><td>{user.orderCount}</td><td>{Object.entries(user.paidTotals || {}).length ? Object.entries(user.paidTotals).map(([currency, total]) => <small key={currency}>{currency} {Number(total).toFixed(2)}</small>) : "—"}</td><td><details className="admin-user-history"><summary>View {user.purchases?.length || 0}</summary><div>{user.purchases?.length ? user.purchases.map((purchase) => <article key={purchase.id}><strong>{purchase.productName}{purchase.variantName ? ` — ${purchase.variantName}` : ""} × {purchase.quantity}</strong><small>Invoice ID: {purchase.invoiceId || "—"}</small><span>{purchase.status} · {purchase.currency} {Number(purchase.amount).toFixed(2)}</span><time>{purchase.paidAt ? "Paid" : "Ordered"}: {new Date(purchase.paidAt || purchase.createdAt).toLocaleString()}</time></article>) : <p>No purchases yet.</p>}</div></details></td><td>{user.createdAt ? new Date(user.createdAt).toLocaleString() : "—"}</td></tr>)}</tbody></table></div></section>}
         {tab === "Reviews" && <section className="admin-card"><h2>Product comments <small>({reviews.length})</small></h2><div className="admin-review-list">{reviews.map((review) => <article className="admin-review-card" key={`${review.productId}:${review.id}`}><header><div><strong>{review.productName}</strong><span>{review.userName} · {"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)} · ♥ {review.likeCount}</span></div><time>{review.createdAt ? new Date(review.createdAt).toLocaleString() : "—"}</time></header><p>{review.comment}</p><form className="admin-review-reply" onSubmit={(event) => saveReviewReply(event, review)}><label>Admin reply<textarea name="reply" rows={3} maxLength={1500} defaultValue={review.adminReply || ""} placeholder="Write a reply to this comment…" /></label><button type="submit" className="admin-secondary">Save reply</button><button type="button" className="admin-delete" onClick={() => deleteReview(review)}>Delete comment</button></form>{review.adminReply && <small className="admin-review-replied-by">Replied by {review.adminEmail || "admin"}{review.repliedAt ? ` · ${new Date(review.repliedAt).toLocaleString()}` : ""}</small>}</article>)}{!reviews.length && <p className="admin-empty">No product comments yet.</p>}</div></section>}
         {tab === "Product history" && <section className="admin-card"><h2>Product activity <small>({productActivity?.length || 0})</small></h2><p>Product add, edit, delete, stock renewal, and cancellation events, with the admin and exact time.</p><div className="admin-table-scroll"><table className="admin-table"><thead><tr><th>Product</th><th>Action</th><th>Admin</th><th>Details</th><th>Date and time</th></tr></thead><tbody>{(productActivity || []).map((entry) => <tr key={entry._id}><td>{entry.productName}</td><td>{({ added: "Added", edited: "Edited", deleted: "Deleted", stock_renewed: "Stock renewed", codes_added: "Codes added", order_cancelled: "Order cancelled — stock returned" })[entry.action] || entry.action}</td><td>{entry.adminEmail}</td><td>{entry.details || "—"}</td><td>{entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "—"}</td></tr>)}</tbody></table>{!productActivity?.length && <p className="admin-empty">No product activity recorded yet.</p>}</div></section>}
@@ -233,11 +257,11 @@ export function AdminDashboard() {
   </main>;
 }
 
-function OrderTable({ orders, onMarkPaid, onCancel }) {
+function OrderTable({ orders, onMarkPaid, onCancel, emptyText = "No orders yet." }) {
   const pendingAction = (order) => <div className="admin-order-actions"><button type="button" className="admin-confirm" onClick={() => onMarkPaid(order)}>Confirm paid</button>{onCancel && <button type="button" className="admin-cancel-order" onClick={() => onCancel(order)}>Cancel</button>}</div>;
   return <div className="admin-table-scroll"><table className="admin-table"><thead><tr><th>Order</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Status</th><th>Date</th><th>Action</th></tr></thead><tbody>{orders.map((order) => {
     const codes = order.deliveredCodes?.length ? order.deliveredCodes : order.deliveredCode ? [order.deliveredCode] : [];
     const statusLabel = order.status === "cancelled" ? "Cancelled — stock restored" : order.status === "pending" ? "Pending — reserved" : order.status;
     return <tr key={order._id}><td>#{String(order._id).slice(-7)}<small>{order.invoiceId}</small></td><td>{order.userName}<small>{order.userEmail}</small></td><td>{order.productName}<small>{order.variantName || order.codeNumber}</small></td><td>{order.quantity || 1}</td><td>{order.currency} {Number(order.amount).toFixed(2)}</td><td><span className={`order-status order-status-${order.status}`}>{statusLabel}</span></td><td>{new Date(order.createdAt).toLocaleString()}</td><td>{order.status === "pending" && onMarkPaid ? pendingAction(order) : <>{codes.map((code) => <code className="admin-delivered-code" key={code}>{code}</code>)}{order.status === "paid" && <button type="button" className="invoice-download" onClick={() => downloadInvoicePdf(order)}>Download invoice PDF</button>}</>}</td></tr>;
-  })}</tbody></table>{!orders.length && <p className="admin-empty">No orders yet.</p>}</div>;
+  })}</tbody></table>{!orders.length && <p className="admin-empty">{emptyText}</p>}</div>;
 }
