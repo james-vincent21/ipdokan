@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useCurrencyPreference } from "@/lib/currency-preference";
+import { productHref } from "@/lib/proxy-links";
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 const categoryAliases = {
   "discount proxy panel": ["proxy management"],
@@ -94,25 +95,29 @@ export function ProductCatalogPage() {
           {!loading && !loadError && shownProducts.map((product) => {
             const usdPrices = product.variants?.length ? product.variants.map((variant) => Number(variant.priceUsd ?? variant.price)) : [Number(product.priceUsd ?? product.price)];
             const bdtPrices = product.variants?.length ? product.variants.map((variant) => Number(variant.priceBdt ?? 0)) : [Number(product.priceBdt ?? 0)];
-            const selectedPrices = currency === "BDT" ? bdtPrices : usdPrices;
+            // API plans priced at 0 have no price yet; they are left out of the range.
+            const selectedPrices = (currency === "BDT" ? bdtPrices : usdPrices).filter((price) => !product.instantDelivery || price > 0);
             const minimumPrice = Math.min(...selectedPrices);
             const maximumPrice = Math.max(...selectedPrices);
-            const multiPriceLabel = minimumPrice === maximumPrice
+            const multiPriceLabel = !selectedPrices.length ? "Contact admin" : minimumPrice === maximumPrice
               ? formatCatalogPrice(minimumPrice, currency)
               : `${formatCatalogPrice(minimumPrice, currency)} – ${formatCatalogPrice(maximumPrice, currency)}`;
             const stars = Math.round(Number(product.rating) || 0);
+            // API proxies are bought on the proxy store page, where the buyer picks location and provider.
+            const href = productHref(product);
             return <article className="store-product-card" key={product.id || product.name}>
-              <a className="store-product-art" href={product.id ? `/product/${encodeURIComponent(product.id)}` : undefined} aria-label={`View ${product.name}`}>
+              <a className="store-product-art" href={href} aria-label={`View ${product.name}`}>
                 {Number(product.discountPercent) > 0 && <span className="store-product-discount">-{product.discountPercent}%</span>}
                 {product.imageUrl ? <img src={product.imageUrl} alt={product.name} /> : <span className="store-product-placeholder">{product.name?.trim()?.charAt(0).toUpperCase() || "P"}</span>}
               </a>
               <div className="store-product-info">
                 <h2>{product.name}</h2>
                 <p className="store-product-category">{product.category || product.categories?.[0] || "Product"}</p>
+                {product.instantDelivery && <p className="instant-delivery-badge">⚡ Instant delivery</p>}
                 <p className="store-product-rating" aria-label={`${product.rating || 0} out of 5 stars`}><span>{Array.from({ length: 5 }, (_, index) => <i key={index} className={index < stars ? "is-filled" : ""}>★</i>)}</span>{Number(product.reviewCount || product.reviews) > 0 && <small>({product.reviewCount || product.reviews})</small>}</p>
                 <p className={product.available ? "catalog-stock" : "catalog-stock is-empty"}>{product.available || 0} in stock</p>
                 <strong className="store-product-price">{multiPriceLabel}</strong>
-                <a className="store-product-purchase" href={product.id ? `/product/${encodeURIComponent(product.id)}` : undefined}>PURCHASE</a>
+                <a className="store-product-purchase" href={href}>PURCHASE</a>
               </div>
             </article>;
           })}

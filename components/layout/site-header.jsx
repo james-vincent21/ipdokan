@@ -4,22 +4,30 @@ import { useEffect, useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { clearAdminDashboardCache } from "@/lib/admin-dashboard-cache";
 import { useCurrencyPreference } from "@/lib/currency-preference";
+import { Icon } from "@/components/ui/icons";
+import { productHref } from "@/lib/proxy-links";
 
-const navItems = [
-  { label: "All Item", href: "/catalog", icon: "▦" },
-  { label: "Discount Proxy Panel", href: "/catalog?category=Discount%20Proxy%20Panel", icon: "▤" },
-  { label: "Monthly ISP Proxy", href: "/#isp", icon: "◎" },
-  { label: "Dedicated Servers", href: "/#servers", icon: "▥" },
-  { label: "Private Proxy", href: "/#private-proxy", icon: "▣" },
-  { label: "Residential Static Proxy", href: "/#residential", icon: "⌂" },
-  { label: "VPS", href: "/#vps", icon: "▧" },
-  { label: "Support", href: "/#support", icon: "◌" },
+// Product categories shown under "Services" in the nav (and searchable on their own).
+// Discount Proxy Panel sits directly in the nav so every visitor sees it.
+const serviceItems = [
+  { label: "Monthly ISP Proxy", href: "/proxies?type=isp", icon: "wifi", note: "ISP & Premium ISP · choose location" },
+  { label: "Private Proxy", href: "/proxies?type=datacenter", icon: "shield", note: "Dedicated datacenter IPs" },
+  { label: "Residential Static Proxy", href: "/proxies?type=static-residential", icon: "home", note: "Real home IPs that stay fixed" },
+  { label: "Dedicated Servers", href: "/catalog?category=Dedicated%20Servers", icon: "server", note: "Bare-metal servers" },
+  { label: "VPS", href: "/catalog?category=VPS", icon: "cloud", note: "Virtual private servers" },
 ];
+const allItem = { label: "All Item", href: "/catalog", icon: "grid" };
+const discountItem = { label: "Discount Proxy Panel", href: "/catalog?category=Discount%20Proxy%20Panel", icon: "discount" };
+const supportItem = { label: "Support", href: "/#support", icon: "support" };
+const navItems = [allItem, discountItem, ...serviceItems, supportItem];
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 export function SiteHeader() {
   const { data: session, isPending: sessionPending } = authClient.useSession();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [servicesOpen, setServicesOpen] = useState(false);
+  // Set when a mouse hover opened the Services menu, so the click that usually follows keeps it open.
+  const servicesHoverOpened = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchProducts, setSearchProducts] = useState([]);
@@ -84,7 +92,7 @@ export function SiteHeader() {
   function submitSearch(event) {
     event.preventDefault();
     if (matchingProducts[0]) {
-      window.location.href = `/product/${encodeURIComponent(matchingProducts[0].id)}`;
+      window.location.href = productHref(matchingProducts[0]);
       setSearchQuery("");
       setMenuOpen(false);
       setSearchOpen(false);
@@ -159,20 +167,34 @@ export function SiteHeader() {
           <span className="menu-lines" aria-hidden="true"><i /><i /></span>
         </button>
         <nav id="primary-navigation" className={`nav-links${menuOpen ? " is-open" : ""}`} aria-label="Main navigation">
-          {navItems.map((item, index) => (
-            <a
-              className={`nav-link${index === 0 ? " is-active" : ""}`}
-              href={item.href}
-              key={item.label}
-              onClick={() => setMenuOpen(false)}
-            >
-              <span className="nav-icon" aria-hidden="true">{item.icon}</span>
-              {item.label}
-            </a>
-          ))}
-          <a className="nav-link account-nav-link" href="/profile" onClick={() => setMenuOpen(false)}>Account</a>
-          <a className="nav-link cart-nav-link" href="/checkout" onClick={() => setMenuOpen(false)}>Cart</a>
-          {isAdmin && <a className="nav-link" href="/admin" onClick={() => setMenuOpen(false)}>Admin dashboard</a>}
+          <a className="nav-link is-active" href={allItem.href} onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name={allItem.icon} /></span>{allItem.label}</a>
+          <a className="nav-link nav-link-highlight" href={discountItem.href} onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name={discountItem.icon} /></span>{discountItem.label}</a>
+          {/* Opens on hover (desktop) or tap (touch / mobile menu). */}
+          <div
+            className={`nav-dropdown${servicesOpen ? " is-open" : ""}`}
+            onPointerEnter={(event) => { if (event.pointerType === "mouse") { servicesHoverOpened.current = true; setServicesOpen(true); } }}
+            onPointerLeave={(event) => { if (event.pointerType === "mouse") { servicesHoverOpened.current = false; setServicesOpen(false); } }}
+            onKeyDown={(event) => { if (event.key === "Escape") setServicesOpen(false); }}
+          >
+            <button className="nav-link nav-dropdown-trigger" type="button" aria-expanded={servicesOpen} aria-controls="services-menu" onClick={() => {
+              if (servicesHoverOpened.current) { servicesHoverOpened.current = false; setServicesOpen(true); }
+              else setServicesOpen((open) => !open);
+            }}>
+              <span className="nav-icon"><Icon name="layers" /></span>Services<span className="nav-dropdown-caret"><Icon name="chevronDown" /></span>
+            </button>
+            <div className="nav-dropdown-menu" id="services-menu">
+              {serviceItems.map((item) => (
+                <a className="nav-dropdown-item" href={item.href} key={item.label} onClick={() => { setServicesOpen(false); setMenuOpen(false); }}>
+                  <span className="nav-dropdown-icon"><Icon name={item.icon} /></span>
+                  <span><strong>{item.label}</strong><small>{item.note}</small></span>
+                </a>
+              ))}
+            </div>
+          </div>
+          <a className="nav-link" href={supportItem.href} onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name={supportItem.icon} /></span>{supportItem.label}</a>
+          <a className="nav-link account-nav-link" href="/profile" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="user" /></span>Account</a>
+          <a className="nav-link cart-nav-link" href="/checkout" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="cart" /></span>Cart</a>
+          {isAdmin && <a className="nav-link" href="/admin" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="dashboard" /></span>Admin dashboard</a>}
           <div className="nav-actions">
             <div className="nav-currency-toggle" aria-label="Choose display currency"><button type="button" className={currency === "USD" ? "is-selected" : ""} aria-pressed={currency === "USD"} onClick={() => setCurrency("USD")}>USD</button><button type="button" className={currency === "BDT" ? "is-selected" : ""} aria-pressed={currency === "BDT"} onClick={() => setCurrency("BDT")}>BDT</button></div>
             {session?.user ? <><a className="sign-in signed-in-user" href="/profile" title="Open your account" onClick={() => setMenuOpen(false)}>
@@ -204,13 +226,13 @@ export function SiteHeader() {
           {searchQuery.trim() ? (
             <div className="search-modal-results">
               {matchingProducts.map((product) => (
-                <a href={`/product/${encodeURIComponent(product.id)}`} key={`product-${product.id}`} onClick={() => { setSearchQuery(""); setMenuOpen(false); setSearchOpen(false); }}>
-                  <span className="search-result-icon" aria-hidden="true">{product.name?.trim()?.charAt(0).toUpperCase() || "P"}</span><span>{product.name}<small>{product.brand || product.category || product.codeNumber}</small></span><span className="search-result-arrow" aria-hidden="true">↗</span>
+                <a href={productHref(product)} key={`product-${product.id}`} onClick={() => { setSearchQuery(""); setMenuOpen(false); setSearchOpen(false); }}>
+                  <span className="search-result-icon" aria-hidden="true">{product.name?.trim()?.charAt(0).toUpperCase() || "P"}</span><span>{product.name}<small>{product.brand || product.category || product.codeNumber}</small></span><span className="search-result-arrow"><Icon name="arrowUpRight" /></span>
                 </a>
               ))}
               {matchingNavItems.map((item) => (
                 <a href={item.href} key={`nav-${item.label}`} onClick={() => { setSearchQuery(""); setMenuOpen(false); setSearchOpen(false); }}>
-                  <span className="search-result-icon" aria-hidden="true">{item.icon}</span><span>{item.label}<small>Category</small></span><span className="search-result-arrow" aria-hidden="true">↗</span>
+                  <span className="search-result-icon"><Icon name={item.icon} /></span><span>{item.label}<small>Category</small></span><span className="search-result-arrow"><Icon name="arrowUpRight" /></span>
                 </a>
               ))}
               {!matchingProducts.length && !matchingNavItems.length && <p className="search-empty">{searchLoading ? "Searching products…" : searchError || "No matching products or services found."}</p>}

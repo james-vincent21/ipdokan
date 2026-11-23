@@ -49,6 +49,11 @@ export const config = {
   cryptomusMerchantId,
   cryptomusPaymentKey,
   cryptomusEnabled,
+  // MyProxyApi reseller API: proxies sold from it are ordered automatically after payment.
+  myproxyapiBaseUrl: (process.env.MYPROXYAPI_BASE_URL || "https://reseller.myproxyapi.com/api/v1").replace(/\/+$/, ""),
+  myproxyapiUsername: process.env.MYPROXYAPI_USERNAME || "",
+  myproxyapiSecret: process.env.MYPROXYAPI_SECRET || "",
+  myproxyapiUserId: Number(process.env.MYPROXYAPI_USER_ID) || 0,
   googleClientId: process.env.GOOGLE_CLIENT_ID || "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
   authUrl,

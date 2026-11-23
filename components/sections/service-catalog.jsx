@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useCurrencyPreference } from "@/lib/currency-preference";
+import { Icon } from "@/components/ui/icons";
+import { categoryHref, productHref } from "@/lib/proxy-links";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -105,13 +107,15 @@ export function ServiceCatalog() {
               const productPrice = currency === "BDT"
                 ? (variants.length ? Math.min(...variants.map((variant) => Number(variant.priceBdt ?? 0))) : Number(product.priceBdt ?? 0))
                 : (variants.length ? Math.min(...variants.map((variant) => Number(variant.priceUsd ?? variant.price))) : Number(product.priceUsd ?? product.price));
+              // API products: lowest price that is set (0 = not priced yet).
+              const setPrices = product.instantDelivery ? variants.map((variant) => Number(currency === "BDT" ? variant.priceBdt : variant.priceUsd) || 0).filter((price) => price > 0) : [];
               return (
-              <a className="popular-product-card" href={product.brand ? `/catalog?brand=${encodeURIComponent(product.brand)}` : `/product/${encodeURIComponent(product.id)}`} key={product.id}>
+              <a className="popular-product-card" href={product.proxyType ? productHref(product) : product.brand ? `/catalog?brand=${encodeURIComponent(product.brand)}` : productHref(product)} key={product.id}>
                 <span className={`popular-product-art ${product.style || "vless"}`} aria-hidden="true">
                   {product.imageUrl ? <img src={product.imageUrl} alt="" /> : <span className="product-stage"><span>{product.name?.trim()?.charAt(0).toUpperCase() || "P"}</span></span>}
                 </span>
                 <span className="popular-product-details">
-                  <span className="popular-product-meta"><span>{formatPrice(productPrice, currency)}</span>{product.available !== undefined && <span className={product.available ? "catalog-stock" : "catalog-stock is-empty"}>{product.available} in stock</span>}{product.rating && <span className="product-rating"><b>★</b> {product.rating} <i>☰</i> {product.reviews}</span>}</span>
+                  <span className="popular-product-meta"><span>{product.instantDelivery ? (setPrices.length ? formatPrice(Math.min(...setPrices), currency) : "Contact admin") : formatPrice(productPrice, currency)}</span>{product.available !== undefined && <span className={product.available ? "catalog-stock" : "catalog-stock is-empty"}>{product.available} in stock</span>}{product.rating && <span className="product-rating"><b>★</b> {product.rating} <i>☰</i> {product.reviews}</span>}</span>
                   <span className="popular-product-name">{product.name}</span>
                   <span className="catalog-home-cta">Purchase →</span>
                 </span>
@@ -125,7 +129,7 @@ export function ServiceCatalog() {
 
         <div className="services-grid">
           {services.map((service) => (
-            <a className="service-card" id={service.id} href={`/catalog?category=${encodeURIComponent(service.title)}`} key={service.id}>
+            <a className="service-card" id={service.id} href={categoryHref(service.title)} key={service.id}>
               <div className="service-card-top">
                 <span className="service-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none">{service.icon}</svg></span>
                 <span className="service-index">{service.index} / 06</span>
@@ -133,7 +137,7 @@ export function ServiceCatalog() {
               <span className="service-category">{service.category}</span>
               <h3>{service.title}</h3>
               <p>{service.description}</p>
-              <div className="service-card-footer"><span>Explore category</span><span className="service-arrow" aria-hidden="true">↗</span></div>
+              <div className="service-card-footer"><span>Explore category</span><span className="service-arrow"><Icon name="arrowUpRight" /></span></div>
             </a>
           ))}
         </div>

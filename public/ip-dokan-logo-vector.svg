@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 866 288" role="img" aria-labelledby="title">
+  <title id="title">IP Dokan</title>
+  <defs>
+    <linearGradient id="i-fill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f8cff" />
+      <stop offset="1" stop-color="#1f3fd6" />
+    </linearGradient>
+    <linearGradient id="d-fill" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#1d4fe0" />
+      <stop offset=".45" stop-color="#1aa9e8" />
+      <stop offset="1" stop-color="#19e6b0" />
+    </linearGradient>
+    <linearGradient id="bag-fill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="1" stop-color="#d9e4ff" />
+    </linearGradient>
+    <linearGradient id="speed-fill" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#2a6dff" />
+      <stop offset="1" stop-color="#2a6dff" stop-opacity=".75" />
+    </linearGradient>
+    <linearGradient id="swoosh-fill" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#1f3fd6" />
+      <stop offset=".55" stop-color="#2a8cff" />
+      <stop offset="1" stop-color="#19e6b0" />
+    </linearGradient>
+  </defs>
+
+  <!-- speed lines -->
+  <g fill="url(#speed-fill)">
+    <rect x="148" y="104" width="38" height="9" rx="4.5" />
+    <rect x="134" y="121" width="52" height="9" rx="4.5" />
+    <rect x="148" y="138" width="38" height="9" rx="4.5" />
+  </g>
+
+  <!-- "i" -->
+  <circle cx="206" cy="80" r="18" fill="url(#i-fill)" />
+  <rect x="188" y="104" width="38" height="96" rx="9" fill="url(#i-fill)" />
+
+  <!-- "D" ring -->
+  <path fill="url(#d-fill)" fill-rule="evenodd" d="M228 62h46c40 0 72 31 72 69s-32 69-72 69h-46V166h46c21 0 37-15 37-35s-16-35-37-35h-46V62Z" />
+
+  <!-- shopping bag inside the D -->
+  <g>
+    <path d="M258 112c0-11 6-19 14-19s14 8 14 19" fill="none" stroke="#e3ebff" stroke-width="5" stroke-linecap="round" />
+    <path d="M248 110h48l4 47c.4 4-2.6 7-6.6 7h-42.8c-4 0-7-3-6.6-7L248 110Z" fill="url(#bag-fill)" />
+  </g>
+
+  <!-- "okan" wordmark -->
+  <g fill="none" stroke="#eef2fb" stroke-width="21" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="403" cy="133" r="34" />
+    <path d="M478 72v94M478 140l38-34M492 127l26 39" />
+    <circle cx="584" cy="133" r="33" />
+    <path d="M617 102v64" />
+    <path d="M650 166v-34c0-19 13-32 31-32s31 13 31 32v34" />
+  </g>
+  <!-- cursor in the "a" -->
+  <path d="M579 125l26 10-11 4 8 12-6 4-8-12-7 9-2-27Z" fill="#c9d6f2" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round" />
+
+  <!-- tagline (outlined text would need the original font; this uses a common sans-serif) -->
+  <text x="363" y="203" fill="#c3cde4" font-family="Poppins, 'DM Sans', Arial, sans-serif" font-size="19.5" font-weight="500" letter-spacing=".2">Powering Your Online Business with <tspan fill="#19e6b0" font-weight="700" dx="6">IP</tspan></text>
+
+  <!-- swoosh -->
+  <path d="M465 229c62-14 128-19 196-14-66 1-132 6-196 14Z" fill="url(#swoosh-fill)" />
+</svg>

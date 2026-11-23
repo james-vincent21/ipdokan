@@ -9,16 +9,41 @@ const cartKey = "ipdokan-cart-v1";
 
 // Hosted payment gateways; each one charges in a single currency.
 const paymentMethodInfo = {
-  zinipay: { label: "Pay with ZiniPay", detail: "bKash, Nagad & more · BDT", currency: "BDT" },
-  cryptomus: { label: "Pay with Cryptomus", detail: "Crypto (USDT, BTC…) · USD", currency: "USD" },
+  zinipay: { label: "Pay with ZiniPay", detail: "bKash, Nagad, Rocket, Upay & more", currency: "BDT" },
+  cryptomus: { label: "Pay with Cryptomus", detail: "USDT, BTC, ETH & other crypto", currency: "USD" },
 };
 
-function PaymentMethodPicker({ methods, value, onChange }) {
-  if (!methods.length) return null;
-  return <div className="product-payment-currency payment-method-picker" role="radiogroup" aria-label="Payment method">
-    {methods.map((method) => <button type="button" role="radio" aria-checked={value === method} key={method} className={value === method ? "is-selected" : ""} onClick={() => onChange(method)}>
-      <strong>{paymentMethodInfo[method].label}</strong><small>{paymentMethodInfo[method].detail}</small>
-    </button>)}
+function PaymentLogo({ method }) {
+  if (method === "zinipay") return <img className="pay-option-logo is-wallets" src="/zinipay-1.webp" alt="bKash, Nagad, Rocket, Upay and other wallets" />;
+  return <span className="pay-option-logo is-crypto" aria-hidden="true"><i className="coin-usdt">₮</i><i className="coin-btc">₿</i><i className="coin-eth">Ξ</i></span>;
+}
+
+// Shown after "Buy now" / "Place order": the customer picks a gateway and sees the exact amount for each.
+function PaymentChooser({ methods, amounts, busy, onChoose, onClose }) {
+  useEffect(() => {
+    const onKey = (event) => { if (event.key === "Escape" && !busy) onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [busy, onClose]);
+  return <div className="search-overlay pay-chooser-overlay" onClick={(event) => { if (event.target === event.currentTarget && !busy) onClose(); }}>
+    <div className="search-modal pay-chooser" role="dialog" aria-modal="true" aria-labelledby="pay-chooser-title">
+      <div className="search-modal-heading">
+        <div><span className="search-modal-kicker">CHECKOUT</span><h2 id="pay-chooser-title">Choose payment method</h2></div>
+        <button type="button" className="search-modal-close" aria-label="Close" disabled={busy} onClick={onClose}>×</button>
+      </div>
+      <div className="pay-chooser-options">
+        {methods.map((method) => {
+          const info = paymentMethodInfo[method];
+          const amount = amounts[info.currency] || 0;
+          return <button type="button" key={method} className="pay-option" disabled={busy || !(amount > 0)} onClick={() => onChoose(method)}>
+            <PaymentLogo method={method} />
+            <span className="pay-option-text"><strong>{info.label}</strong><small>{info.detail}</small></span>
+            <span className="pay-option-amount">{amount > 0 ? formatPrice(amount, info.currency) : `Not available in ${info.currency}`}</span>
+          </button>;
+        })}
+      </div>
+      <p className="pay-chooser-note">{busy ? "Taking you to the secure payment page…" : "You will be taken to the provider's secure page to pay. Your code is delivered as soon as the payment is confirmed."}</p>
+    </div>
   </div>;
 }
 
@@ -33,6 +58,7 @@ export function CheckoutPage() {
   const [productId, setProductId] = useState("");
   const [productName, setProductName] = useState("");
   const [variantId, setVariantId] = useState("");
+  const [locationId, setLocationId] = useState("");
   const [isProductPage, setIsProductPage] = useState(false);
   const [quantity, setQuantity] = useState("1");
   const [loading, setLoading] = useState(true);
@@ -48,7 +74,7 @@ export function CheckoutPage() {
   const [paymentCurrency, setPaymentCurrency] = useCurrencyPreference();
   const [paymentMode, setPaymentMode] = useState("loading");
   const [paymentMethods, setPaymentMethods] = useState([]);
-  const [paymentMethod, setPaymentMethod] = useState("");
+  const [chooser, setChooser] = useState("");
   const hostedMethods = paymentMethods.filter((method) => method in paymentMethodInfo);
 
   useEffect(() => {
@@ -73,16 +99,10 @@ export function CheckoutPage() {
       setPaymentMode(result.mode || "disabled");
       const methods = Array.isArray(result.methods) ? result.methods : [result.mode || "disabled"];
       setPaymentMethods(methods);
-      setPaymentMethod(methods[0] || "");
     }).catch(() => setPaymentMode("disabled"));
     if (new URLSearchParams(window.location.search).get("payment") === "cancelled") setError("Payment was cancelled. No money was charged.");
   }, []);
 
-  // Each hosted gateway charges in one currency: ZiniPay in BDT, Cryptomus in USD.
-  useEffect(() => {
-    const currency = paymentMethodInfo[paymentMethod]?.currency;
-    if (currency && paymentCurrency !== currency) setPaymentCurrency(currency);
-  }, [paymentMethod, paymentCurrency, setPaymentCurrency]);
 
   useEffect(() => {
     if (!isProductPage) return;
@@ -112,10 +132,22 @@ export function CheckoutPage() {
   const selectedPriceUsd = selectedVariant?.priceUsd ?? selectedProduct?.priceUsd ?? selectedPrice;
   const selectedPriceBdt = selectedVariant?.priceBdt ?? selectedProduct?.priceBdt ?? 0;
   const selectedPaymentPrice = paymentCurrency === "BDT" ? selectedPriceBdt : selectedPriceUsd;
+  // API plans whose price the admin has not set (0) cannot be bought; the buyer contacts the admin.
+  const priceMissing = Boolean(selectedProduct?.instantDelivery) && !(selectedPaymentPrice > 0);
+  // Proxy plans without a fixed location: the buyer picks a city that has enough IPs left.
+  const needsLocation = Boolean(selectedVariant?.chooseLocation);
+  const locationChoices = needsLocation ? (selectedProduct?.locationOptions || []) : [];
+  const selectedLocation = locationChoices.find((location) => location.id === locationId) || null;
+  const locationError = needsLocation && !selectedLocation ? "Choose a location first." : needsLocation && selectedLocation.stock < (selectedVariant.ips || 1) * Number(quantity || 1) ? `${selectedLocation.name} does not have enough IPs for this plan. Choose another location.` : "";
   const totals = useMemo(() => cart.reduce((sum, item) => {
     sum[item.currency] = (sum[item.currency] || 0) + item.price * item.quantity;
     return sum;
   }, {}), [cart]);
+
+  // API proxies are bought on the proxy store page (same interface as the nav), so old links redirect there.
+  useEffect(() => {
+    if (isProductPage && selectedProduct?.proxyType) window.location.replace(`/proxies?type=${encodeURIComponent(selectedProduct.proxyType)}`);
+  }, [isProductPage, selectedProduct?.proxyType]);
 
   useEffect(() => {
     if (isProductPage) {
@@ -173,6 +205,8 @@ export function CheckoutPage() {
     } catch (requestError) { setError(requestError.message); }
   }
 
+  const sameLine = (a, b) => a.productId === b.productId && (a.variantId || "") === (b.variantId || "") && (a.locationId || "") === (b.locationId || "");
+
   function persistCart(nextCart) {
     setCart(nextCart);
     window.localStorage.setItem(cartKey, JSON.stringify(nextCart));
@@ -198,15 +232,17 @@ export function CheckoutPage() {
     if (!selectedProduct) return setError("Choose an available product first.");
     if (selectedAvailable <= 0) return setError("This plan is currently out of stock.");
     if (!Number.isInteger(amount) || amount < 1 || amount > selectedAvailable) return setError(`Choose a quantity from 1 to ${selectedAvailable}.`);
-    const existing = cart.find((item) => item.productId === selectedProduct.id && (item.variantId || "") === (selectedVariant?.id || ""));
+    if (priceMissing) return setError("The price for this plan is not set yet. Please contact admin.");
+    if (locationError) return setError(locationError);
+    const line = { productId: selectedProduct.id, variantId: selectedVariant?.id || "", locationId: selectedLocation?.id || "" };
+    const existing = cart.find((item) => sameLine(item, line));
     const nextQuantity = amount + (existing?.quantity || 0);
     if (nextQuantity > selectedAvailable) return setError(`Your cart can contain up to ${selectedAvailable} unit(s) of this plan.`);
     const nextCart = existing
-      ? cart.map((item) => item.productId === selectedProduct.id && (item.variantId || "") === (selectedVariant?.id || "") ? { ...item, quantity: nextQuantity } : item)
+      ? cart.map((item) => sameLine(item, line) ? { ...item, quantity: nextQuantity } : item)
       : [...cart, {
-        productId: selectedProduct.id,
-        variantId: selectedVariant?.id || "",
-        variantName: selectedVariant?.name || "",
+        ...line,
+        variantName: [selectedVariant?.name, selectedLocation?.name].filter(Boolean).join(" · "),
         name: selectedProduct.name,
         codeNumber: selectedProduct.codeNumber,
         imageUrl: selectedProduct.imageUrl,
@@ -222,21 +258,52 @@ export function CheckoutPage() {
   function changeQuantity(item, value) {
     const amount = Number(value);
     if (!Number.isInteger(amount) || amount < 1 || amount > item.available) return;
-    persistCart(cart.map((entry) => entry.productId === item.productId && (entry.variantId || "") === (item.variantId || "") ? { ...entry, quantity: amount } : entry));
+    persistCart(cart.map((entry) => sameLine(entry, item) ? { ...entry, quantity: amount } : entry));
   }
 
-  async function startStripeCheckout(orderIds) {
-    if (paymentMethod in paymentMethodInfo) {
-      const response = await fetch(`${apiUrl}/api/payments/${paymentMethod}/create`, {
+  // Price of a cart line in a given currency, read from the live catalog.
+  function linePrice(item, currency) {
+    const product = products.find((entry) => entry.id === item.productId);
+    const variant = product?.variants?.find((entry) => entry.id === item.variantId);
+    if (!product) return item.currency === currency ? item.price : 0;
+    return currency === "BDT"
+      ? (variant?.priceBdt ?? product.priceBdt ?? 0)
+      : (variant?.priceUsd ?? product.priceUsd ?? variant?.price ?? product.price ?? 0);
+  }
+
+  function chooserAmounts(kind) {
+    if (kind === "product") {
+      const amount = Number(quantity || 0);
+      return { BDT: selectedPriceBdt * amount, USD: selectedPriceUsd * amount };
+    }
+    return Object.fromEntries(["BDT", "USD"].map((currency) => [currency, cart.reduce((sum, item) => sum + linePrice(item, currency) * item.quantity, 0)]));
+  }
+
+  // With hosted gateways, "Buy now" / "Place order" first opens the payment method chooser.
+  function startPurchase(kind) {
+    setError(""); setMessage("");
+    if (kind === "product") {
+      const amount = Number(quantity);
+      if (!selectedProduct || !Number.isInteger(amount) || amount < 1 || amount > selectedAvailable) return setError(`Choose a quantity from 1 to ${selectedAvailable}.`);
+      if (priceMissing) return setError("The price for this plan is not set yet. Please contact admin.");
+      if (locationError) return setError(locationError);
+    }
+    if (hostedMethods.length) return setChooser(kind);
+    return kind === "product" ? purchaseProduct() : placeOrders();
+  }
+
+  async function startStripeCheckout(orderIds, method = "") {
+    if (method in paymentMethodInfo) {
+      const response = await fetch(`${apiUrl}/api/payments/${method}/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ orderIds }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || `Could not start the ${paymentMethodInfo[paymentMethod].label.replace("Pay with ", "")} payment.`);
+      if (!response.ok) throw new Error(result.error || `Could not start the ${paymentMethodInfo[method].label.replace("Pay with ", "")} payment.`);
       window.location.assign(result.url);
-      return;
+      return true;
     }
     const modeResponse = await fetch(`${apiUrl}/api/payments/mode`, { cache: "no-store" });
     const modeResult = await modeResponse.json();
@@ -265,39 +332,42 @@ export function CheckoutPage() {
     window.location.assign(result.url);
   }
 
-  async function placeOrders() {
+  async function placeOrders(method = "") {
     setBusy(true); setError(""); setMessage("");
     const orderIds = [];
     let remainingCart = [...cart];
+    const currency = paymentMethodInfo[method]?.currency;
+    let redirecting = false;
     try {
       for (const item of [...cart]) {
-        const response = await fetch(`${apiUrl}/api/orders`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ productId: item.productId, variantId: item.variantId || undefined, quantity: item.quantity, currency: item.currency }) });
+        const response = await fetch(`${apiUrl}/api/orders`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ productId: item.productId, variantId: item.variantId || undefined, locationId: item.locationId || undefined, quantity: item.quantity, currency: currency || item.currency }) });
         const result = await response.json();
         if (response.status === 401) throw new Error("Sign in before placing your order.");
         if (!response.ok) throw new Error(result.error || `Could not place the ${item.name} order.`);
         orderIds.push(result.order.id);
-        remainingCart = remainingCart.filter((entry) => entry.productId !== item.productId || (entry.variantId || "") !== (item.variantId || ""));
+        remainingCart = remainingCart.filter((entry) => !sameLine(entry, item));
         persistCart(remainingCart);
         setProducts((current) => current.map((product) => product.id === item.productId ? { ...product, available: Math.max(0, product.available - item.quantity) } : product));
       }
-      await startStripeCheckout(orderIds);
-    } catch (requestError) { setError(requestError.message); }
-    finally { setBusy(false); }
+      redirecting = await startStripeCheckout(orderIds, method);
+    } catch (requestError) { setError(requestError.message); setChooser(""); window.scrollTo({ top: 0, behavior: "smooth" }); }
+    finally { if (!redirecting) setBusy(false); }
   }
 
-  async function purchaseProduct() {
+  async function purchaseProduct(method = "") {
     const amount = Number(quantity);
     if (!selectedProduct || !Number.isInteger(amount) || amount < 1 || amount > selectedAvailable) {
       setError(`Choose a quantity from 1 to ${selectedAvailable}.`);
       return;
     }
     setBusy(true); setError(""); setMessage("");
+    let redirecting = false;
     try {
       const response = await fetch(`${apiUrl}/api/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ productId: selectedProduct.id, variantId: selectedVariant?.id || undefined, quantity: amount, currency: paymentCurrency }),
+        body: JSON.stringify({ productId: selectedProduct.id, variantId: selectedVariant?.id || undefined, locationId: selectedLocation?.id || undefined, quantity: amount, currency: paymentMethodInfo[method]?.currency || paymentCurrency }),
       });
       const result = await response.json();
       if (response.status === 401) throw new Error("Sign in before purchasing.");
@@ -307,12 +377,13 @@ export function CheckoutPage() {
         available: Math.max(0, product.available - amount),
         variants: product.variants?.map((variant) => variant.id === selectedVariant?.id ? { ...variant, available: Math.max(0, variant.available - amount) } : variant),
       }));
-      await startStripeCheckout([result.order.id]);
-    } catch (requestError) { setError(requestError.message); }
-    finally { setBusy(false); }
+      redirecting = await startStripeCheckout([result.order.id], method);
+    } catch (requestError) { setError(requestError.message); setChooser(""); window.scrollTo({ top: 0, behavior: "smooth" }); }
+    finally { if (!redirecting) setBusy(false); }
   }
 
   return <main className="checkout-page">
+    {chooser && <PaymentChooser methods={hostedMethods} amounts={chooserAmounts(chooser)} busy={busy} onClose={() => setChooser("")} onChoose={(method) => (chooser === "product" ? purchaseProduct(method) : placeOrders(method))} />}
     <div className="checkout-shell">
       <header className="checkout-heading"><span className="auth-kicker">IP DOKAN STORE</span><h1>{isProductPage ? "Product details" : "Checkout"}</h1><p>{isProductPage ? "Review product details, choose a plan, and add your quantity." : "Review your cart and place the order."}</p></header>
       {error && <p className="admin-notice is-error" role="alert">{error}{error.includes("Sign in") && <> <a href="/sign-in">Go to sign in</a></>}</p>}
@@ -323,18 +394,23 @@ export function CheckoutPage() {
         <div className="admin-card product-detail-info">
           <span className="product-detail-category">{selectedProduct.category || "Product"}</span>
           <h2>{selectedProduct.name}</h2>
+          {selectedProduct.instantDelivery && <p className="instant-delivery-badge">⚡ Instant delivery: your proxies are set up automatically right after payment.</p>}
           {selectedProduct.rating > 0 && <p className="product-detail-rating">★ {Number(selectedProduct.rating).toFixed(1)} {selectedProduct.reviewCount ? `(${selectedProduct.reviewCount} reviews)` : ""}</p>}
           <p className="product-detail-description">{selectedProduct.description || "Product details and plan options."}</p>
           <p className="product-detail-sku">SKU: {selectedProduct.codeNumber}</p>
-          <PaymentMethodPicker methods={hostedMethods} value={paymentMethod} onChange={setPaymentMethod} />
-          {!hostedMethods.length && <div className="product-payment-currency" aria-label="Payment currency"><button type="button" className={paymentCurrency === "USD" ? "is-selected" : ""} onClick={() => setPaymentCurrency("USD")}>USD</button><button type="button" className={paymentCurrency === "BDT" ? "is-selected" : ""} onClick={() => setPaymentCurrency("BDT")}>BDT</button></div>}
-          <strong className="product-detail-price">{formatPrice(selectedPaymentPrice, paymentCurrency)} <small>per unit</small></strong>
-          <p className="product-detail-alt-price">Also available: {formatPrice(selectedPriceUsd, "USD")} / {formatPrice(selectedPriceBdt, "BDT")}</p>
-          {selectedProduct.variants?.length > 0 && <div className="product-detail-label"><span>Choose plan / variant</span><div className="product-variant-options">{selectedProduct.variants.map((variant) => <button type="button" key={variant.id} className={selectedVariant?.id === variant.id ? "is-selected" : ""} disabled={!variant.available} onClick={() => { setVariantId(variant.id); setQuantity("1"); setError(""); }}><strong>{variant.name}</strong><small>{formatPrice(paymentCurrency === "BDT" ? (variant.priceBdt ?? 0) : (variant.priceUsd ?? variant.price), paymentCurrency)}</small></button>)}</div></div>}
+          <div className="product-payment-currency" aria-label="Payment currency"><button type="button" className={paymentCurrency === "USD" ? "is-selected" : ""} onClick={() => setPaymentCurrency("USD")}>USD</button><button type="button" className={paymentCurrency === "BDT" ? "is-selected" : ""} onClick={() => setPaymentCurrency("BDT")}>BDT</button></div>
+          {priceMissing ? <strong className="product-detail-price">Contact admin for price</strong> : <>
+            <strong className="product-detail-price">{formatPrice(selectedPaymentPrice, paymentCurrency)} <small>per unit</small></strong>
+            {!(selectedProduct.instantDelivery && !(selectedPriceUsd > 0 && selectedPriceBdt > 0)) && <p className="product-detail-alt-price">Also available: {formatPrice(selectedPriceUsd, "USD")} / {formatPrice(selectedPriceBdt, "BDT")}</p>}
+          </>}
+          {selectedProduct.variants?.length > 0 && <div className="product-detail-label"><span>Choose plan / variant</span><div className="product-variant-options">{selectedProduct.variants.map((variant) => <button type="button" key={variant.id} className={selectedVariant?.id === variant.id ? "is-selected" : ""} disabled={!variant.available} onClick={() => { setVariantId(variant.id); setQuantity("1"); setError(""); }}><strong>{variant.name}</strong><small>{selectedProduct.instantDelivery && !((paymentCurrency === "BDT" ? variant.priceBdt : variant.priceUsd) > 0) ? "Contact admin" : formatPrice(paymentCurrency === "BDT" ? (variant.priceBdt ?? 0) : (variant.priceUsd ?? variant.price), paymentCurrency)}</small></button>)}</div></div>}
+          {needsLocation && <label className="product-detail-label product-location-select"><span>Choose location</span><select value={selectedLocation?.id || ""} onChange={(event) => { setLocationId(event.target.value); setError(""); }}><option value="">Select a location…</option>{locationChoices.map((location) => <option key={location.id} value={location.id} disabled={location.stock < (selectedVariant.ips || 1)}>{location.name}{location.stock < (selectedVariant.ips || 1) ? " (not enough IPs)" : ""}</option>)}</select>{!locationChoices.length && <small>Locations could not be loaded. Refresh the page or contact support.</small>}</label>}
           <p className="product-detail-stock">{selectedAvailable > 0 ? `${selectedAvailable} available` : "Out of stock"}</p>
           <div className="product-quantity-control"><span>Quantity</span><div><button type="button" aria-label="Decrease quantity" disabled={Number(quantity) <= 1} onClick={() => setQuantity(String(Math.max(1, Number(quantity) - 1)))}>−</button><output>{quantity}</output><button type="button" aria-label="Increase quantity" disabled={Number(quantity) >= selectedAvailable} onClick={() => setQuantity(String(Math.min(selectedAvailable, Number(quantity) + 1)))}>+</button></div></div>
+          {priceMissing ? <div className="product-detail-actions"><a className="auth-submit product-purchase-button" href="https://t.me/IpDokan" target="_blank" rel="noreferrer">Contact admin</a><p className="product-contact-note">The price for this plan is not set yet. Message admin on Telegram to order it.</p></div> : <>
           <p className="product-detail-total">Total <strong>{formatPrice(selectedPaymentPrice * Number(quantity || 0), paymentCurrency)}</strong></p>
-          <div className="product-detail-actions"><button className="admin-secondary" type="button" disabled={!selectedAvailable} onClick={() => addToCart()} >Add to cart</button><button className="auth-submit product-purchase-button" type="button" disabled={!selectedAvailable || busy} onClick={purchaseProduct}>{busy ? "Processing…" : "Buy now"}</button></div>
+          <div className="product-detail-actions"><button className="admin-secondary" type="button" disabled={!selectedAvailable} onClick={() => addToCart()} >Add to cart</button><button className="auth-submit product-purchase-button" type="button" disabled={!selectedAvailable || busy} onClick={() => startPurchase("product")}>{busy ? "Processing…" : "Buy now"}</button></div>
+          </>}
           {paymentMode === "demo" && <p className="demo-payment-note">Demo payment is on. Purchases are simulated; no real charge is made.</p>}
         </div>
       </section>
@@ -370,9 +446,8 @@ export function CheckoutPage() {
             <button className="checkout-remove" type="button" onClick={() => persistCart(cart.filter((entry) => !(entry.productId === item.productId && (entry.variantId || "") === (item.variantId || ""))))}>Remove</button>
           </article>)}</div>
           <div className="checkout-totals">{Object.entries(totals).map(([currency, total]) => <p key={currency}><span>Total ({currency})</span><strong>{formatPrice(total, currency)}</strong></p>)}</div>
-          <PaymentMethodPicker methods={hostedMethods} value={paymentMethod} onChange={setPaymentMethod} />
-          <button className="auth-submit checkout-submit" type="button" disabled={busy} onClick={placeOrders}>{busy ? "Placing order…" : "Place order"}</button>
-          <p className="checkout-payment-note">{paymentMode === "demo" ? "Demo mode completes the purchase without charging a real payment method." : paymentMethod === "zinipay" ? "You will pay in BDT with ZiniPay (bKash, Nagad and more). Codes are delivered as soon as the payment is confirmed." : paymentMethod === "cryptomus" ? "You will pay in USD with crypto through Cryptomus. Codes are delivered once the blockchain payment is confirmed." : "Placing an order reserves inventory. Codes are delivered after Stripe confirms payment."}</p></>
+          <button className="auth-submit checkout-submit" type="button" disabled={busy} onClick={() => startPurchase("cart")}>{busy ? "Placing order…" : "Place order"}</button>
+          <p className="checkout-payment-note">{paymentMode === "demo" ? "Demo mode completes the purchase without charging a real payment method." : hostedMethods.length ? `Next, choose how to pay: ${hostedMethods.map((method) => paymentMethodInfo[method].label.replace("Pay with ", "")).join(" or ")}. Codes are delivered as soon as the payment is confirmed.` : "Placing an order reserves inventory. Codes are delivered after Stripe confirms payment."}</p></>
           : <p className="checkout-empty">Your cart is empty. Choose a product and add a quantity to continue.</p>}
         </section>
       </div>}

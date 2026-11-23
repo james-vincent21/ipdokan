@@ -15,6 +15,21 @@ async function startServer() {
   setInterval(() => {
     expirePendingOrders().catch((error) => console.error("Could not expire pending orders:", error.message));
   }, 60 * 1000).unref();
+  // Proxies of supplier orders that were not ready at payment time are fetched again here.
+  const { refreshSupplierDeliveries, syncSupplierProducts } = await import("./controllers/supplier.controller.js");
+  const { supplierConfigured } = await import("./lib/myproxyapi.js");
+  // MyProxyApi plans are loaded into the catalog automatically: at start, then every 6 hours.
+  if (config.authEnabled && supplierConfigured()) {
+    const syncProducts = () => syncSupplierProducts().then((summary) => {
+      const added = summary.reduce((sum, item) => sum + (item.added || 0), 0);
+      if (added) console.log(`MyProxyApi sync: ${added} new plan(s) added without a price.`);
+    }).catch((error) => console.error("MyProxyApi product sync failed:", error.message));
+    syncProducts();
+    setInterval(syncProducts, 6 * 60 * 60 * 1000).unref();
+  }
+  setInterval(() => {
+    refreshSupplierDeliveries().catch((error) => console.error("Could not refresh supplier deliveries:", error.message));
+  }, 2 * 60 * 1000).unref();
 
   app.listen(config.port, () => {
     console.log(`IP Dokan API listening on http://localhost:${config.port}`);

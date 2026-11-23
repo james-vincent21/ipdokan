@@ -2,10 +2,12 @@ import { Router } from "express";
 import { optionalAuth, requireAuth } from "../middleware/auth.middleware.js";
 import { confirmZinipayPayment, createZinipayInvoice } from "../controllers/zinipay.controller.js";
 import { confirmCryptomusPayment, createCryptomusInvoice } from "../controllers/cryptomus.controller.js";
+import { listProxyStore } from "../controllers/supplier.controller.js";
 import { addProductReview, completeDemoPayment, createOrder, createStripeCheckout, listMyOrders, listProductReviews, listProducts, paymentMode, toggleProductReviewLike } from "../controllers/store.controller.js";
 
 const router = Router();
 router.get("/products", listProducts);
+router.get("/proxies", listProxyStore);
 router.get("/payments/mode", paymentMode);
 router.get("/products/:id/reviews", optionalAuth, listProductReviews);
 router.post("/products/:id/reviews", requireAuth, addProductReview);

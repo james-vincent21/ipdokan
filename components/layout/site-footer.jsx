@@ -1,11 +1,7 @@
-const categories = [
-  ["Discount proxy panel", "/#discount"],
-  ["Monthly ISP Proxy", "/#isp"],
-  ["Dedicated Servers", "/#servers"],
-  ["Private Proxy", "/#private-proxy"],
-  ["Residential Static Proxy", "/#residential"],
-  ["VPS", "/#vps"],
-];
+import { categoryHref } from "@/lib/proxy-links";
+
+// Same destinations as the header nav (proxy categories open the proxy store).
+const categories = ["Discount Proxy Panel", "Monthly ISP Proxy", "Dedicated Servers", "Private Proxy", "Residential Static Proxy", "VPS"].map((label) => [label, categoryHref(label)]);
 
 const usefulLinks = [
   ["Home", "/"],

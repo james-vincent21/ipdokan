@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { requireAdmin } from "../middleware/admin.middleware.js";
 import { addAdminEmail, addCodes, addProduct, adminOrders, adminOverview, adminProducts, adminReviews, adminUsers, cancelOrder, confirmOrderPayment, deleteProduct, deleteProductReview, editProduct, listAdminEmails, productActivity, removeAdminEmail, replyToProductReview, setProductStock } from "../controllers/store.controller.js";
+import { importSupplierProducts, retrySupplierDelivery, setSupplierDelivery, supplierPlans, supplierPrice, supplierStatus } from "../controllers/supplier.controller.js";
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -24,4 +25,10 @@ router.get("/product-activity", productActivity);
 router.get("/orders", adminOrders);
 router.post("/orders/:id/confirm-payment", confirmOrderPayment);
 router.post("/orders/:id/cancel", cancelOrder);
+router.post("/orders/:id/supplier-retry", retrySupplierDelivery);
+router.patch("/orders/:id/supplier-delivery", setSupplierDelivery);
+router.get("/supplier/status", supplierStatus);
+router.get("/supplier/plans", supplierPlans);
+router.post("/supplier/price", supplierPrice);
+router.post("/supplier/import", importSupplierProducts);
 export default router;

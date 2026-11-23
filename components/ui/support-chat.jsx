@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { openTelegramBot } from "@/lib/telegram-link";
+import { Icon } from "@/components/ui/icons";
 
 const topics = [
   { label: "Proxy plans", href: "#products" },
@@ -37,7 +38,7 @@ export function SupportChat() {
             <div className="chat-topics">
               {topics.map((topic) => <a href={topic.href} key={topic.label} onClick={() => setIsOpen(false)}>{topic.label}<span aria-hidden="true">→</span></a>)}
             </div>
-            <a className="chat-contact" href="#support" onClick={() => setIsOpen(false)}>Contact support <span aria-hidden="true">↗</span></a>
+            <a className="chat-contact" href="#support" onClick={() => setIsOpen(false)}>Contact support <Icon name="arrowUpRight" /></a>
           </div>
         </section>
       )}

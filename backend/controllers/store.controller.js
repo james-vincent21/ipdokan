@@ -5,6 +5,8 @@ import { Order } from "../models/order.model.js";
 import { AdminEmail } from "../models/admin-email.model.js";
 import { ProductActivity } from "../models/product-activity.model.js";
 import { config } from "../config/env.js";
+import { SUPPLIER_CATEGORIES, SupplierError, availableBalanceUsd, categoryLocations, getPrice, isIpv4, supplierConfigured } from "../lib/myproxyapi.js";
+import { SUPPLIER_MAX_QUANTITY, fulfillSupplierOrder, lowestSetPrice, supplierVariantsInput } from "./supplier.controller.js";
 
 function parseCodeList(input) {
   const list = Array.isArray(input) ? input : typeof input === "string" ? input.split(/\r?\n/) : [];
@@ -47,16 +49,24 @@ function getInvoiceId(order) {
   return `IPD-${datePart}-${String(order._id).toUpperCase()}`;
 }
 
-function publicProduct(product) {
+// `locationOptions`: the supplier cities a buyer can pick for plans without a fixed location.
+function publicProduct(product, locationOptions = []) {
+  // Supplier products have no local stock: each plan can be bought up to SUPPLIER_MAX_QUANTITY at a time.
+  const fromSupplier = product.source === "myproxyapi";
   const variants = (product.variants || []).map((variant) => ({
     id: variant._id,
     name: variant.name,
     price: variant.price,
     priceUsd: variant.priceUsd ?? variant.price,
     priceBdt: variant.priceBdt ?? 0,
-    available: variant.stockQuantity !== null && variant.stockQuantity !== undefined
-      ? variant.stockQuantity
-      : variant.codes.filter((item) => item.status === "available").length,
+    available: fromSupplier
+      ? (supplierConfigured() ? SUPPLIER_MAX_QUANTITY : 0)
+      : variant.stockQuantity !== null && variant.stockQuantity !== undefined
+        ? variant.stockQuantity
+        : variant.codes.filter((item) => item.status === "available").length,
+    // A price of 0 in a currency means the admin has not set it: buyers paying in that currency are
+    // asked to contact the admin. priceOnRequest: no price is set in either currency.
+    ...(fromSupplier ? { ips: variant.supplier?.ips || 1, chooseLocation: !variant.supplier?.locations, priceOnRequest: !(variant.priceUsd > 0) && !(variant.priceBdt > 0) } : {}),
   }));
   const available = variants.length ? variants.reduce((sum, variant) => sum + variant.available, 0) : product.codes.filter((item) => item.status === "available").length;
   return {
@@ -72,11 +82,14 @@ function publicProduct(product) {
     reviewCount: product.reviewCount || 0,
     showInPopular: Boolean(product.showInPopular),
     popularOrder: product.popularOrder || 0,
-    price: variants.length ? Math.min(...variants.map((variant) => variant.price)) : product.price,
-    priceUsd: variants.length ? Math.min(...variants.map((variant) => variant.priceUsd ?? variant.price)) : (product.priceUsd ?? product.price),
-    priceBdt: variants.length ? Math.min(...variants.map((variant) => variant.priceBdt ?? 0)) : (product.priceBdt ?? 0),
+    price: fromSupplier ? lowestSetPrice(variants, "priceUsd") : variants.length ? Math.min(...variants.map((variant) => variant.price)) : product.price,
+    priceUsd: fromSupplier ? lowestSetPrice(variants, "priceUsd") : variants.length ? Math.min(...variants.map((variant) => variant.priceUsd ?? variant.price)) : (product.priceUsd ?? product.price),
+    priceBdt: fromSupplier ? lowestSetPrice(variants, "priceBdt") : variants.length ? Math.min(...variants.map((variant) => variant.priceBdt ?? 0)) : (product.priceBdt ?? 0),
+    ...(fromSupplier ? { priceOnRequest: variants.every((variant) => variant.priceOnRequest) } : {}),
     currency: product.currency,
     available,
+    instantDelivery: fromSupplier,
+    ...(fromSupplier ? { locationOptions, proxyType: product.supplierCategory || "" } : {}),
     variants,
   };
 }
@@ -103,7 +116,9 @@ function publicReview(review, userId = "") {
 export async function listProducts(_req, res, next) {
   try {
     const products = await Product.find({ active: true }).sort({ createdAt: -1 }).lean();
-    res.json({ products: products.map(publicProduct) });
+    const slugs = [...new Set(products.filter((product) => product.source === "myproxyapi" && product.supplierCategory).map((product) => product.supplierCategory))];
+    const locations = new Map(await Promise.all(slugs.map(async (slug) => [slug, await categoryLocations(slug).catch(() => [])])));
+    res.json({ products: products.map((product) => publicProduct(product, locations.get(product.supplierCategory) || [])) });
   } catch (error) { next(error); }
 }
 
@@ -220,6 +235,7 @@ export async function createOrder(req, res, next) {
     if (!product) return res.status(404).json({ error: "Product not found." });
     const variant = req.body?.variantId ? product.variants.id(req.body.variantId) : null;
     if (req.body?.variantId && !variant) return res.status(404).json({ error: "Product variant not found." });
+    if (product.source === "myproxyapi") return createSupplierOrder(req, res, { product, variant, quantity, currency });
     const sharedVariantStock = Boolean(variant && variant.stockQuantity !== null && variant.stockQuantity !== undefined);
     if (sharedVariantStock && quantity > 1) return res.status(409).json({ error: `${variant.name} has only one shared code, so it can be bought one at a time. Ask the store to add separate codes for this plan.` });
     if (sharedVariantStock) {
@@ -283,10 +299,88 @@ export async function createOrder(req, res, next) {
   } catch (error) { next(error); }
 }
 
+// The buyer's public IPv4 address, added to the proxy's authentication whitelist.
+// Behind nginx the real address arrives in X-Real-IP (see deploy/nginx.conf).
+function customerIpv4(req) {
+  const candidates = [req.headers["x-real-ip"], String(req.headers["x-forwarded-for"] || "").split(",")[0], req.socket?.remoteAddress];
+  for (const candidate of candidates) {
+    const ip = String(candidate || "").trim().replace(/^::ffff:/, "");
+    if (isIpv4(ip) && !/^(10\.|127\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)) return ip;
+  }
+  return "";
+}
+
+const supplierUnavailable = "This plan is temporarily unavailable. Please try again later or contact support.";
+
+async function createSupplierOrder(req, res, { product, variant, quantity, currency }) {
+  if (!variant?.supplier?.planId) return res.status(400).json({ error: "Choose a plan first." });
+  if (!((currency === "BDT" ? variant.priceBdt : variant.priceUsd) > 0)) return res.status(409).json({ error: "The price for this plan is not set yet. Please contact admin to order it." });
+  if (quantity > SUPPLIER_MAX_QUANTITY) return res.status(400).json({ error: `You can buy up to ${SUPPLIER_MAX_QUANTITY} of this plan in one order.` });
+  if (!supplierConfigured()) return res.status(503).json({ error: supplierUnavailable });
+  let locations = variant.supplier.locations;
+  let locationName = "";
+  const ipsNeeded = (variant.supplier.ips || 1) * quantity;
+  if (!locations) {
+    const locationId = typeof req.body?.locationId === "string" ? req.body.locationId.trim() : "";
+    if (!locationId) return res.status(400).json({ error: "Choose a location for your proxies." });
+    let options;
+    try { options = await categoryLocations(product.supplierCategory); }
+    catch (error) { console.error("MyProxyApi locations failed:", error.message); return res.status(503).json({ error: supplierUnavailable }); }
+    const location = options.find((item) => item.id === locationId);
+    if (!location) return res.status(400).json({ error: "That location is no longer available. Refresh the page and choose another." });
+    if (location.stock < ipsNeeded) return res.status(409).json({ error: `${location.name} has only ${location.stock} IP(s) left. Choose another location or a smaller plan.` });
+    locations = location.id;
+    locationName = location.name;
+  }
+  const whitelistIp = isIpv4(req.body?.whitelistIp) ? req.body.whitelistIp.trim() : customerIpv4(req);
+  if (!whitelistIp) return res.status(400).json({ error: "We could not detect your public IPv4 address, which the proxy needs. Turn off any VPN and try again, or contact support." });
+  let costUsd;
+  try {
+    const price = await getPrice({ planId: variant.supplier.planId, period: variant.supplier.period });
+    costUsd = price.priceUsd * quantity;
+    await Product.updateOne({ _id: product._id }, { $set: { "variants.$[variant].supplier.costUsd": price.priceUsd, "variants.$[variant].supplier.costCheckedAt": new Date() } }, { arrayFilters: [{ "variant._id": variant._id }] });
+    if (price.priceUsd > Number(variant.priceUsd ?? variant.price)) {
+      console.error(`Supplier cost for ${product.name} / ${variant.name} is now $${price.priceUsd}, above the sell price. Update the price in the admin panel.`);
+      return res.status(409).json({ error: supplierUnavailable });
+    }
+    // Funds already promised to other unpaid or undelivered supplier orders.
+    const [reserved] = await Order.aggregate([{ $match: { source: "myproxyapi", status: { $in: ["pending", "processing"] } } }, { $group: { _id: null, total: { $sum: "$supplierCostUsd" } } }]);
+    const balance = await availableBalanceUsd();
+    if (balance < costUsd + (reserved?.total || 0)) {
+      console.error(`MyProxyApi balance $${balance} is too low for a $${costUsd} order. Top up the reseller deposit.`);
+      return res.status(409).json({ error: supplierUnavailable });
+    }
+  } catch (error) {
+    if (!(error instanceof SupplierError)) throw error;
+    console.error("MyProxyApi check before order failed:", error.message);
+    return res.status(503).json({ error: supplierUnavailable });
+  }
+  const order = new Order({
+    userId: req.user.id,
+    userName: req.user.name || "",
+    userEmail: req.user.email || "",
+    productId: product._id,
+    productName: product.name,
+    codeNumber: product.codeNumber,
+    variantId: variant._id,
+    variantName: locationName ? `${variant.name} · ${locationName}` : variant.name,
+    amount: (currency === "BDT" ? variant.priceBdt : (variant.priceUsd ?? variant.price)) * quantity,
+    currency,
+    quantity,
+    source: "myproxyapi",
+    whitelistIp,
+    supplierPlan: { planId: variant.supplier.planId, period: variant.supplier.period, locations, protocol: variant.supplier.protocol, planName: variant.supplier.planName },
+    supplierCostUsd: costUsd,
+  });
+  order.invoiceId = getInvoiceId(order);
+  await order.save();
+  res.status(201).json({ order: { id: order.id, productName: order.productName, quantity: order.quantity, amount: order.amount, currency: order.currency, status: order.status }, message: "Order created. Your proxies will be set up automatically after payment." });
+}
+
 export async function listMyOrders(req, res, next) {
   try {
     const orders = await Order.find({ userId: req.user.id }).sort({ createdAt: -1 }).lean();
-    res.json({ orders: orders.map((order) => ({ id: order._id, invoiceId: getInvoiceId(order), productId: order.productId, productName: order.productName, variantName: order.variantName || "", codeNumber: order.codeNumber, quantity: order.quantity || 1, amount: order.amount, currency: order.currency, status: order.status, paymentMethod: order.paymentMethod || "", deliveredCode: order.status === "paid" ? order.deliveredCode : "", deliveredCodes: order.status === "paid" ? (order.deliveredCodes?.length ? order.deliveredCodes : order.deliveredCode ? [order.deliveredCode] : []) : [], createdAt: order.createdAt, paidAt: order.paidAt })) });
+    res.json({ orders: orders.map((order) => ({ id: order._id, invoiceId: getInvoiceId(order), productId: order.productId, productName: order.productName, variantName: order.variantName || "", codeNumber: order.codeNumber, quantity: order.quantity || 1, amount: order.amount, currency: order.currency, status: order.status, paymentMethod: order.paymentMethod || "", deliveredCode: order.status === "paid" ? order.deliveredCode : "", deliveredCodes: order.status === "paid" ? (order.deliveredCodes?.length ? order.deliveredCodes : order.deliveredCode ? [order.deliveredCode] : []) : [], isProxyOrder: order.source === "myproxyapi", deliveryPending: Boolean(order.supplierDeliveryPending), createdAt: order.createdAt, paidAt: order.paidAt })) });
   } catch (error) { next(error); }
 }
 
@@ -341,6 +435,7 @@ export async function fulfillPaidOrder(orderId, { method, reference, paymentInte
       throw new Error(`Order ${orderId} is not available for ${method} fulfillment.`);
     }
   }
+  if (order.source === "myproxyapi") return fulfillSupplierOrder(order._id);
 
   const product = await Product.findById(order.productId);
   const variant = order.variantId ? product?.variants.id(order.variantId) : null;
@@ -469,6 +564,13 @@ export async function addProduct(req, res, next) {
   try {
     const fields = productInput(req.body);
     const variants = Array.isArray(req.body.variants) ? req.body.variants : [];
+    if (req.body.source === "myproxyapi") {
+      const supplierCategory = Object.hasOwn(SUPPLIER_CATEGORIES, req.body.supplierCategory) ? req.body.supplierCategory : "";
+      const supplierVariants = await supplierVariantsInput(variants, [], supplierCategory);
+      const product = await Product.create({ ...fields, source: "myproxyapi", supplierCategory, codes: [], variants: supplierVariants });
+      await ProductActivity.create({ productId: String(product._id), productName: product.name, action: "added", adminEmail: String(req.user.email || "").toLowerCase(), details: `API product created with ${supplierVariants.length} plan(s)` });
+      return res.status(201).json({ product: { ...product.toObject(), id: product.id, stockAvailable: 0, stockSold: 0, stockReserved: 0 } });
+    }
     if (!variants.length) throw new Error("Add at least one product variant and set its price there.");
     const normalizedVariants = [];
     for (let index = 0; index < variants.length; index += 1) {
@@ -505,7 +607,14 @@ export async function editProduct(req, res, next) {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ error: "Product not found." });
     Object.assign(product, fields);
-    if (Object.hasOwn(req.body, "variants")) {
+    if (product.source === "myproxyapi" && Object.hasOwn(req.body, "variants")) {
+      const supplierVariants = await supplierVariantsInput(req.body.variants, product.variants, product.supplierCategory);
+      const keptIds = new Set(supplierVariants.map((variant) => String(variant._id || "")).filter(Boolean));
+      for (const existing of product.variants) {
+        if (!keptIds.has(String(existing._id)) && await Order.exists({ variantId: existing._id, status: { $in: ["pending", "processing"] } })) return res.status(409).json({ error: `${existing.name} has unpaid or undelivered orders. Finish or cancel them before removing this plan.` });
+      }
+      product.variants = supplierVariants;
+    } else if (Object.hasOwn(req.body, "variants")) {
       if (!Array.isArray(req.body.variants)) return res.status(400).json({ error: "Variants must be an array." });
       if (!req.body.variants.length) return res.status(400).json({ error: "A product needs at least one variant with its own price." });
       const keptIds = new Set(req.body.variants.map((input) => input.id).filter(Boolean));
@@ -677,6 +786,12 @@ export async function confirmOrderPayment(req, res, next) {
   let productId;
   try {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ error: "Invalid order id." });
+    const supplierOrder = await Order.findOne({ _id: req.params.id, source: "myproxyapi" }, { status: 1 }).lean();
+    if (supplierOrder) {
+      if (supplierOrder.status !== "pending") return res.status(409).json({ error: "Order is not pending payment." });
+      await fulfillPaidOrder(req.params.id, { method: "", reference: `admin_${String(req.user.email || "").toLowerCase()}` });
+      return res.json({ order: await Order.findById(req.params.id).lean() });
+    }
     const order = await Order.findOneAndUpdate({ _id: req.params.id, status: "pending" }, { $set: { status: "processing" } }, { new: true });
     if (!order) return res.status(409).json({ error: "Order is not pending payment." });
     productId = order.productId;

@@ -108,10 +108,12 @@ export function UserProfile() {
                   {order.amount !== undefined && <span>Total <b>{order.currency} {Number(order.amount).toFixed(2)}</b></span>}
                 </div>
                 {codes.length > 0 && <div className="profile-codes">
-                  <span className="profile-codes-label">{codes.length === 1 ? "Your code" : `Your ${codes.length} codes`}</span>
+                  <span className="profile-codes-label">{order.isProxyOrder ? (codes.length === 1 ? "Your proxy" : `Your ${codes.length} proxies`) : codes.length === 1 ? "Your code" : `Your ${codes.length} codes`}</span>
                   {codes.map((code) => <div className="profile-code" key={code}><code>{code}</code><button type="button" onClick={() => copyCode(code)} aria-label={`Copy code ${code}`}>{copiedCode === code ? "Copied" : "Copy"}</button></div>)}
                 </div>}
-                {order.status === "pending" && <p className="profile-order-hint">Your codes will appear here as soon as payment is confirmed.</p>}
+                {order.status === "pending" && <p className="profile-order-hint">{order.isProxyOrder ? "Your proxies will be set up automatically as soon as payment is confirmed." : "Your codes will appear here as soon as payment is confirmed."}</p>}
+                {order.isProxyOrder && order.status === "processing" && <p className="profile-order-hint">Payment received. We are setting up your proxies; this usually takes a few minutes. Contact support if it takes longer.</p>}
+                {order.isProxyOrder && order.status === "paid" && <p className="profile-order-hint">Format: IP:port:username:password. The IP address you ordered from is also whitelisted, so it can connect without a password.</p>}
                 {order.status === "paid" && <footer><button type="button" className="invoice-download" onClick={() => { if (!downloadInvoicePdf(order, user)) setMessage("Allow pop-ups to download your invoice as a PDF."); }}>Download invoice PDF</button></footer>}
               </article>;
             })}</div> : <div className="profile-empty-orders"><strong>No purchases yet</strong><p>Products you buy will show up here with their codes and invoices.</p><Link className="profile-home-link" href="/catalog">Browse products</Link></div>}

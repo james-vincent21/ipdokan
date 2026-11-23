@@ -35,6 +35,35 @@ const orderSchema = new mongoose.Schema({
   deliveredCode: { type: String, default: "" },
   deliveredCodes: { type: [String], default: [], index: true },
   paidAt: { type: Date, default: null },
+  // Supplier (MyProxyApi) fulfilment. One supplier order is placed per unit of quantity.
+  source: { type: String, enum: ["manual", "myproxyapi"], default: "manual", index: true },
+  whitelistIp: { type: String, default: "" },
+  // Snapshot of the plan at purchase time, so later product edits do not change what is ordered.
+  supplierPlan: {
+    planId: { type: Number, default: null },
+    period: { type: String, default: "" },
+    locations: { type: String, default: "" },
+    protocol: { type: String, default: "http" },
+    planName: { type: String, default: "" },
+  },
+  supplierCostUsd: { type: Number, default: 0 },
+  supplierOrders: { type: [{
+    orderId: { type: String, required: true },
+    planName: { type: String, default: "" },
+    priceUsd: { type: Number, default: 0 },
+    startTime: { type: String, default: "" },
+    endTime: { type: String, default: "" },
+    proxies: { type: [String], default: [] },
+    details: { type: mongoose.Schema.Types.Mixed, default: null },
+    placedAt: { type: Date, default: Date.now },
+  }], default: [] },
+  supplierError: { type: String, default: "" },
+  // Set when the last supplier call may have created an order we have no record of.
+  supplierUncertain: { type: Boolean, default: false },
+  supplierLockUntil: { type: Date, default: null },
+  // Orders were placed but their proxy list was not ready yet; a background job keeps checking.
+  supplierDeliveryPending: { type: Boolean, default: false, index: true },
+  supplierCheckedAt: { type: Date, default: null },
 }, { timestamps: true });
 
 export const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);

@@ -42,6 +42,14 @@ The catalog links to product details and `/checkout`. Customers can add products
 
 Admins can set available quantity directly: increasing stock requires one new unique delivery code per extra unit, while reducing stock removes only unused codes.
 
+## MyProxyApi (reseller) products
+
+Set `MYPROXYAPI_USERNAME` and `MYPROXYAPI_SECRET` (the Secret ID from the MyProxyApi partner panel) to sell its proxies. In the admin panel, choose **Source: MyProxyApi** when adding a product, browse the supplier's plans, and add one plan per variant with its period (`1d`, `1w`, `1`, `3`, `6`, `12` months), location id(s), protocol, and your USD/BDT price. Saving checks every plan's current cost with the supplier and refuses a USD price below cost.
+
+Customers see these products in the normal catalog categories. Before an order is created, the API checks the supplier's current cost and that the reseller deposit can cover it (plus other open supplier orders); otherwise the plan shows as temporarily unavailable. After payment, one supplier order is placed per unit of quantity, paid from the deposit, with the buyer's public IPv4 (from nginx's `X-Real-IP`) as the whitelisted IP. The proxies are read from the supplier's order details and delivered as the order's codes. If they are not ready yet, a background job re-checks every 2 minutes for up to 3 days.
+
+If ordering fails (for example insufficient funds), the order stays **processing** with the supplier error shown in the admin Orders tab, where **Retry delivery** tries again. Every supplier order id is saved as soon as it is placed, so a retry never orders the same unit twice. If a request timed out, the admin must first check the MyProxyApi panel before confirming a retry. When the proxies cannot be read automatically, the admin can paste them by hand.
+
 ## Modules
 
 - `server.js` — starts Express and connects MongoDB when auth is enabled.

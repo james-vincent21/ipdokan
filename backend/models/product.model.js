@@ -15,6 +15,17 @@ const variantSchema = new mongoose.Schema({
   stockQuantity: { type: Number, default: null, min: 0 },
   secretCode: { type: String, default: "", trim: true, maxlength: 2048 },
   codes: { type: [codeSchema], default: [] },
+  // Only for products with source "myproxyapi": what to order from the supplier for this plan.
+  supplier: {
+    planId: { type: Number, default: null },
+    period: { type: String, default: "", trim: true, maxlength: 8 },
+    locations: { type: String, default: "", trim: true, maxlength: 200 },
+    protocol: { type: String, default: "http", enum: ["http", "socks5"] },
+    planName: { type: String, default: "", trim: true, maxlength: 200 },
+    ips: { type: Number, default: 1, min: 1 },
+    costUsd: { type: Number, default: 0, min: 0 },
+    costCheckedAt: { type: Date, default: null },
+  },
 }, { _id: true });
 
 const reviewSchema = new mongoose.Schema({
@@ -47,6 +58,10 @@ const productSchema = new mongoose.Schema({
   priceBdt: { type: Number, default: 0, min: 0 },
   currency: { type: String, default: "USD", uppercase: true, maxlength: 3 },
   active: { type: Boolean, default: true },
+  // "manual": admin-added codes. "myproxyapi": proxies are ordered from the supplier after payment.
+  source: { type: String, enum: ["manual", "myproxyapi"], default: "manual", index: true },
+  // Supplier category slug (datacenter, isp, ...). Plans with no fixed location let the buyer pick one of its cities.
+  supplierCategory: { type: String, default: "", trim: true, maxlength: 40 },
   codes: { type: [codeSchema], default: [] },
   variants: { type: [variantSchema], default: [] },
   reviews: { type: [reviewSchema], default: [] },
