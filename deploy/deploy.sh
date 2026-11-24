@@ -2,7 +2,7 @@
 # Runs on YOUR Mac from the project root:  bash deploy/deploy.sh
 set -euo pipefail
 HOST="${HOST:-root@45.140.203.195}"
-PUBLIC_URL="${PUBLIC_URL:-http://45.140.203.195}"
+PUBLIC_URL="${PUBLIC_URL:-https://ipdokan.com}"
 cd "$(dirname "$0")/.."
 
 ssh "$HOST" 'mkdir -p /var/www/ipdokan'

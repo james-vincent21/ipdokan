@@ -2,7 +2,7 @@
 # Runs ON the VPS (Ubuntu/Debian). Safe to re-run on every deploy.
 set -euo pipefail
 APP_DIR=/var/www/ipdokan
-PUBLIC_URL="${PUBLIC_URL:-http://45.140.203.195}"
+PUBLIC_URL="${PUBLIC_URL:-https://ipdokan.com}"
 
 if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 20 ]; then
   apt-get update

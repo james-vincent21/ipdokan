@@ -1,5 +1,6 @@
 // pm2 process file. PUBLIC_URL is the address people use to open the site.
-const PUBLIC_URL = process.env.PUBLIC_URL || "http://45.140.203.195";
+// The live site is served at the domain (nginx + HTTPS); the bare IP must not be used for the build or CORS.
+const PUBLIC_URL = process.env.PUBLIC_URL || "https://ipdokan.com";
 
 const shared = {
   NODE_ENV: "production",
