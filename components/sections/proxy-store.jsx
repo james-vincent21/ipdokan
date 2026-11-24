@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCurrencyPreference } from "@/lib/currency-preference";
+import { DEFAULT_SERVICE_FEE_PERCENT, withServiceFee } from "@/lib/service-fee";
 import { Icon } from "@/components/ui/icons";
 
 // Proxy store: type → plan → country → area → provider → buy.
@@ -48,6 +49,7 @@ export function ProxyStore() {
   const [notice, setNotice] = useState("");
   const [otherProducts, setOtherProducts] = useState([]);
   const [currency, setCurrency] = useCurrencyPreference();
+  const [serviceFeePercent, setServiceFeePercent] = useState(DEFAULT_SERVICE_FEE_PERCENT);
   const locationRef = useRef(null);
   const summaryRef = useRef(null);
   const router = useRouter();
@@ -60,6 +62,7 @@ export function ProxyStore() {
       const list = result.types || [];
       setTypes(list);
       setMaxQuantity(result.maxQuantity || 10);
+      if (Number.isFinite(result.serviceFeePercent)) setServiceFeePercent(result.serviceFeePercent);
       setTypeSlug(list.some((type) => type.slug === requested) ? requested : list[0]?.slug || "");
       setLoadError("");
     }).catch(() => setLoadError("Could not load proxies. Please check your connection and try again."))
@@ -77,6 +80,7 @@ export function ProxyStore() {
   const provider = city?.providers.find((item) => item.locationId === locationId) || null;
   const unitPrice = plan ? (currency === "BDT" ? plan.priceBdt : plan.priceUsd) : 0;
   const ipsNeeded = (plan?.ips || 1) * quantity;
+  const charge = withServiceFee(unitPrice * quantity, serviceFeePercent);
   const relatedProducts = type ? otherProducts.filter((product) => product.category === type.category) : [];
   const visiblePlans = (showAllPlans ? type?.plans : type?.plans.slice(0, PLANS_SHOWN)) || [];
 
@@ -170,6 +174,7 @@ export function ProxyStore() {
             return <article key={item.id} className={`proxy-plan-card${selected ? " is-selected" : ""}`}>
               <h3>{planTitle(item, type)}</h3>
               <p className="proxy-plan-price">{price > 0 ? <>{formatPrice(price, currency)} <small>/ month</small></> : <span className="proxy-plan-contact">Contact admin for price</span>}</p>
+              {price > 0 && item.ips > 1 && <p className="proxy-plan-per-ip">{formatPrice(price / item.ips, currency)} per IP</p>}
               <ul>
                 <li>{item.ips} dedicated {item.ips === 1 ? "IP" : "IPs"}</li>
                 <li>Instant setup</li>
@@ -224,7 +229,8 @@ export function ProxyStore() {
           <output>{quantity}</output>
           <button type="button" aria-label="Increase quantity" disabled={quantity >= maxQuantity || (provider && provider.stock < (plan.ips * (quantity + 1)))} onClick={() => setQuantity((value) => Math.min(maxQuantity, value + 1))}>+</button>
         </div></div>
-        <p className="proxy-summary-total">Total <strong>{formatPrice(unitPrice * quantity, currency)}</strong><small>{ipsNeeded} {ipsNeeded === 1 ? "IP" : "IPs"}</small></p>
+        <div className="product-detail-charges"><p><span>Price</span><span>{formatPrice(charge.subtotal, currency)}</span></p><p><span>Service &amp; additional fee ({serviceFeePercent}%)</span><span>{formatPrice(charge.serviceFee, currency)}</span></p></div>
+        <p className="proxy-summary-total">Total <strong>{formatPrice(charge.total, currency)}</strong><small>{ipsNeeded} {ipsNeeded === 1 ? "IP" : "IPs"} · {formatPrice(charge.total / ipsNeeded, currency)} per IP incl. fee</small></p>
         <div className="proxy-summary-actions">
           <button type="button" className="admin-secondary" disabled={!provider} onClick={() => addToCart(false)}>Add to cart</button>
           <button type="button" className="auth-submit" disabled={!provider} onClick={() => addToCart(true)}>Buy now</button>

@@ -7,6 +7,7 @@ import { ProductActivity } from "../models/product-activity.model.js";
 import { config } from "../config/env.js";
 import { SUPPLIER_CATEGORIES, SupplierError, availableBalanceUsd, categoryLocations, getPrice, isIpv4, supplierConfigured } from "../lib/myproxyapi.js";
 import { SUPPLIER_MAX_QUANTITY, fulfillSupplierOrder, lowestSetPrice, supplierVariantsInput } from "./supplier.controller.js";
+import { withServiceFee } from "../utils/service-fee.js";
 
 function parseCodeList(input) {
   const list = Array.isArray(input) ? input : typeof input === "string" ? input.split(/\r?\n/) : [];
@@ -41,6 +42,12 @@ async function findUsedCode(codes) {
 }
 
 const usedCodeMessage = (code) => `The code "${code}" has already been added or sold before. Each code can only be used once.`;
+
+// Order price fields: the product price plus the service fee; `amount` is what the gateway charges.
+function orderCharge(productTotal) {
+  const { subtotal, serviceFee, total } = withServiceFee(productTotal);
+  return { subtotal, serviceFee, serviceFeePercent: config.serviceFeePercent, amount: total };
+}
 
 function getInvoiceId(order) {
   if (order.invoiceId) return order.invoiceId;
@@ -259,7 +266,7 @@ export async function createOrder(req, res, next) {
       codeNumber: product.codeNumber,
       variantId: variant?._id || null,
       variantName: variant?.name || "",
-      amount: ((currency === "BDT"
+      ...orderCharge((currency === "BDT"
         ? (variant?.priceBdt ?? product.priceBdt)
         : (variant?.priceUsd ?? product.priceUsd ?? variant?.price ?? product.price)) * quantity),
       currency,
@@ -364,7 +371,7 @@ async function createSupplierOrder(req, res, { product, variant, quantity, curre
     codeNumber: product.codeNumber,
     variantId: variant._id,
     variantName: locationName ? `${variant.name} · ${locationName}` : variant.name,
-    amount: (currency === "BDT" ? variant.priceBdt : (variant.priceUsd ?? variant.price)) * quantity,
+    ...orderCharge((currency === "BDT" ? variant.priceBdt : (variant.priceUsd ?? variant.price)) * quantity),
     currency,
     quantity,
     source: "myproxyapi",
@@ -483,7 +490,7 @@ export function paymentMode(_req, res) {
   // Hosted gateways the customer can choose between at checkout.
   const methods = [config.zinipayApiKey && "zinipay", config.cryptomusEnabled && "cryptomus"].filter(Boolean);
   const mode = methods[0] || (config.stripeSecretKey ? "stripe" : config.demoPaymentEnabled ? "demo" : "disabled");
-  res.json({ mode, methods: methods.length ? methods : [mode] });
+  res.json({ mode, methods: methods.length ? methods : [mode], serviceFeePercent: config.serviceFeePercent });
 }
 
 export async function completeDemoPayment(req, res, next) {

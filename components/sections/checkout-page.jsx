@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { downloadInvoicePdf } from "@/lib/invoice-download";
 import { useCurrencyPreference } from "@/lib/currency-preference";
+import { DEFAULT_SERVICE_FEE_PERCENT, sumWithServiceFee, withServiceFee } from "@/lib/service-fee";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 const cartKey = "ipdokan-cart-v1";
@@ -19,7 +20,7 @@ function PaymentLogo({ method }) {
 }
 
 // Shown after "Buy now" / "Place order": the customer picks a gateway and sees the exact amount for each.
-function PaymentChooser({ methods, amounts, busy, onChoose, onClose }) {
+function PaymentChooser({ methods, amounts, feePercent, busy, onChoose, onClose }) {
   useEffect(() => {
     const onKey = (event) => { if (event.key === "Escape" && !busy) onClose(); };
     window.addEventListener("keydown", onKey);
@@ -42,7 +43,7 @@ function PaymentChooser({ methods, amounts, busy, onChoose, onClose }) {
           </button>;
         })}
       </div>
-      <p className="pay-chooser-note">{busy ? "Taking you to the secure payment page…" : "You will be taken to the provider's secure page to pay. Your code is delivered as soon as the payment is confirmed."}</p>
+      <p className="pay-chooser-note">{busy ? "Taking you to the secure payment page…" : `Amounts include the ${feePercent}% service & additional fee. You will be taken to the provider's secure page to pay. Your code is delivered as soon as the payment is confirmed.`}</p>
     </div>
   </div>;
 }
@@ -75,6 +76,7 @@ export function CheckoutPage() {
   const [paymentMode, setPaymentMode] = useState("loading");
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [chooser, setChooser] = useState("");
+  const [serviceFeePercent, setServiceFeePercent] = useState(DEFAULT_SERVICE_FEE_PERCENT);
   const hostedMethods = paymentMethods.filter((method) => method in paymentMethodInfo);
 
   useEffect(() => {
@@ -99,6 +101,7 @@ export function CheckoutPage() {
       setPaymentMode(result.mode || "disabled");
       const methods = Array.isArray(result.methods) ? result.methods : [result.mode || "disabled"];
       setPaymentMethods(methods);
+      if (Number.isFinite(result.serviceFeePercent)) setServiceFeePercent(result.serviceFeePercent);
     }).catch(() => setPaymentMode("disabled"));
     if (new URLSearchParams(window.location.search).get("payment") === "cancelled") setError("Payment was cancelled. No money was charged.");
   }, []);
@@ -139,10 +142,10 @@ export function CheckoutPage() {
   const locationChoices = needsLocation ? (selectedProduct?.locationOptions || []) : [];
   const selectedLocation = locationChoices.find((location) => location.id === locationId) || null;
   const locationError = needsLocation && !selectedLocation ? "Choose a location first." : needsLocation && selectedLocation.stock < (selectedVariant.ips || 1) * Number(quantity || 1) ? `${selectedLocation.name} does not have enough IPs for this plan. Choose another location.` : "";
-  const totals = useMemo(() => cart.reduce((sum, item) => {
-    sum[item.currency] = (sum[item.currency] || 0) + item.price * item.quantity;
-    return sum;
-  }, {}), [cart]);
+  // Per currency: product subtotal, the service fee, and the total the customer pays.
+  const totals = useMemo(() => Object.fromEntries([...new Set(cart.map((item) => item.currency))].map((currency) => [currency,
+    sumWithServiceFee(cart.filter((item) => item.currency === currency).map((item) => item.price * item.quantity), serviceFeePercent)])), [cart, serviceFeePercent]);
+  const productCharge = withServiceFee(selectedPaymentPrice * Number(quantity || 0), serviceFeePercent);
 
   // API proxies are bought on the proxy store page (same interface as the nav), so old links redirect there.
   useEffect(() => {
@@ -274,9 +277,9 @@ export function CheckoutPage() {
   function chooserAmounts(kind) {
     if (kind === "product") {
       const amount = Number(quantity || 0);
-      return { BDT: selectedPriceBdt * amount, USD: selectedPriceUsd * amount };
+      return { BDT: withServiceFee(selectedPriceBdt * amount, serviceFeePercent).total, USD: withServiceFee(selectedPriceUsd * amount, serviceFeePercent).total };
     }
-    return Object.fromEntries(["BDT", "USD"].map((currency) => [currency, cart.reduce((sum, item) => sum + linePrice(item, currency) * item.quantity, 0)]));
+    return Object.fromEntries(["BDT", "USD"].map((currency) => [currency, sumWithServiceFee(cart.map((item) => linePrice(item, currency) * item.quantity), serviceFeePercent).total]));
   }
 
   // With hosted gateways, "Buy now" / "Place order" first opens the payment method chooser.
@@ -383,7 +386,7 @@ export function CheckoutPage() {
   }
 
   return <main className="checkout-page">
-    {chooser && <PaymentChooser methods={hostedMethods} amounts={chooserAmounts(chooser)} busy={busy} onClose={() => setChooser("")} onChoose={(method) => (chooser === "product" ? purchaseProduct(method) : placeOrders(method))} />}
+    {chooser && <PaymentChooser methods={hostedMethods} amounts={chooserAmounts(chooser)} feePercent={serviceFeePercent} busy={busy} onClose={() => setChooser("")} onChoose={(method) => (chooser === "product" ? purchaseProduct(method) : placeOrders(method))} />}
     <div className="checkout-shell">
       <header className="checkout-heading"><span className="auth-kicker">IP DOKAN STORE</span><h1>{isProductPage ? "Product details" : "Checkout"}</h1><p>{isProductPage ? "Review product details, choose a plan, and add your quantity." : "Review your cart and place the order."}</p></header>
       {error && <p className="admin-notice is-error" role="alert">{error}{error.includes("Sign in") && <> <a href="/sign-in">Go to sign in</a></>}</p>}
@@ -403,12 +406,14 @@ export function CheckoutPage() {
             <strong className="product-detail-price">{formatPrice(selectedPaymentPrice, paymentCurrency)} <small>per unit</small></strong>
             {!(selectedProduct.instantDelivery && !(selectedPriceUsd > 0 && selectedPriceBdt > 0)) && <p className="product-detail-alt-price">Also available: {formatPrice(selectedPriceUsd, "USD")} / {formatPrice(selectedPriceBdt, "BDT")}</p>}
           </>}
-          {selectedProduct.variants?.length > 0 && <div className="product-detail-label"><span>Choose plan / variant</span><div className="product-variant-options">{selectedProduct.variants.map((variant) => <button type="button" key={variant.id} className={selectedVariant?.id === variant.id ? "is-selected" : ""} disabled={!variant.available} onClick={() => { setVariantId(variant.id); setQuantity("1"); setError(""); }}><strong>{variant.name}</strong><small>{selectedProduct.instantDelivery && !((paymentCurrency === "BDT" ? variant.priceBdt : variant.priceUsd) > 0) ? "Contact admin" : formatPrice(paymentCurrency === "BDT" ? (variant.priceBdt ?? 0) : (variant.priceUsd ?? variant.price), paymentCurrency)}</small></button>)}</div></div>}
+          {selectedProduct.variants?.length > 0 && <div className="product-detail-label"><span>Choose plan / variant</span><div className="product-variant-options">{selectedProduct.variants.map((variant) => <button type="button" key={variant.id} className={selectedVariant?.id === variant.id ? "is-selected" : ""} disabled={!variant.available} onClick={() => { setVariantId(variant.id); setQuantity("1"); setError(""); }}><strong>{variant.name}</strong><small>{selectedProduct.instantDelivery && !((paymentCurrency === "BDT" ? variant.priceBdt : variant.priceUsd) > 0) ? "Contact admin" : formatPrice(paymentCurrency === "BDT" ? (variant.priceBdt ?? 0) : (variant.priceUsd ?? variant.price), paymentCurrency)}</small>{variant.ips > 1 && ((paymentCurrency === "BDT" ? variant.priceBdt : variant.priceUsd) > 0) && <small className="variant-per-ip">{formatPrice((paymentCurrency === "BDT" ? variant.priceBdt : variant.priceUsd) / variant.ips, paymentCurrency)} per IP</small>}</button>)}</div></div>}
           {needsLocation && <label className="product-detail-label product-location-select"><span>Choose location</span><select value={selectedLocation?.id || ""} onChange={(event) => { setLocationId(event.target.value); setError(""); }}><option value="">Select a location…</option>{locationChoices.map((location) => <option key={location.id} value={location.id} disabled={location.stock < (selectedVariant.ips || 1)}>{location.name}{location.stock < (selectedVariant.ips || 1) ? " (not enough IPs)" : ""}</option>)}</select>{!locationChoices.length && <small>Locations could not be loaded. Refresh the page or contact support.</small>}</label>}
           <p className="product-detail-stock">{selectedAvailable > 0 ? `${selectedAvailable} available` : "Out of stock"}</p>
           <div className="product-quantity-control"><span>Quantity</span><div><button type="button" aria-label="Decrease quantity" disabled={Number(quantity) <= 1} onClick={() => setQuantity(String(Math.max(1, Number(quantity) - 1)))}>−</button><output>{quantity}</output><button type="button" aria-label="Increase quantity" disabled={Number(quantity) >= selectedAvailable} onClick={() => setQuantity(String(Math.min(selectedAvailable, Number(quantity) + 1)))}>+</button></div></div>
           {priceMissing ? <div className="product-detail-actions"><a className="auth-submit product-purchase-button" href="https://t.me/IpDokan" target="_blank" rel="noreferrer">Contact admin</a><p className="product-contact-note">The price for this plan is not set yet. Message admin on Telegram to order it.</p></div> : <>
-          <p className="product-detail-total">Total <strong>{formatPrice(selectedPaymentPrice * Number(quantity || 0), paymentCurrency)}</strong></p>
+          <div className="product-detail-charges"><p><span>Price</span><span>{formatPrice(productCharge.subtotal, paymentCurrency)}</span></p><p><span>Service &amp; additional fee ({serviceFeePercent}%)</span><span>{formatPrice(productCharge.serviceFee, paymentCurrency)}</span></p></div>
+          <p className="product-detail-total">Total <strong>{formatPrice(productCharge.total, paymentCurrency)}</strong></p>
+          {selectedVariant?.ips > 0 && productCharge.total > 0 && <p className="product-detail-per-ip">{selectedVariant.ips * Number(quantity || 0)} {selectedVariant.ips * Number(quantity || 0) === 1 ? "IP" : "IPs"} ·{formatPrice(productCharge.total / (selectedVariant.ips * Number(quantity || 1)), paymentCurrency)} per IP incl. fee</p>}
           <div className="product-detail-actions"><button className="admin-secondary" type="button" disabled={!selectedAvailable} onClick={() => addToCart()} >Add to cart</button><button className="auth-submit product-purchase-button" type="button" disabled={!selectedAvailable || busy} onClick={() => startPurchase("product")}>{busy ? "Processing…" : "Buy now"}</button></div>
           </>}
           {paymentMode === "demo" && <p className="demo-payment-note">Demo payment is on. Purchases are simulated; no real charge is made.</p>}
@@ -445,7 +450,11 @@ export function CheckoutPage() {
             <strong className="checkout-line-total">{formatPrice(item.price * item.quantity, item.currency)}</strong>
             <button className="checkout-remove" type="button" onClick={() => persistCart(cart.filter((entry) => !(entry.productId === item.productId && (entry.variantId || "") === (item.variantId || ""))))}>Remove</button>
           </article>)}</div>
-          <div className="checkout-totals">{Object.entries(totals).map(([currency, total]) => <p key={currency}><span>Total ({currency})</span><strong>{formatPrice(total, currency)}</strong></p>)}</div>
+          <div className="checkout-totals">{Object.entries(totals).map(([currency, charge]) => <div className="checkout-total-group" key={currency}>
+            <p><span>Subtotal ({currency})</span><span>{formatPrice(charge.subtotal, currency)}</span></p>
+            <p><span>Service &amp; additional fee ({serviceFeePercent}%)</span><span>{formatPrice(charge.serviceFee, currency)}</span></p>
+            <p className="checkout-total-due"><span>Total ({currency})</span><strong>{formatPrice(charge.total, currency)}</strong></p>
+          </div>)}</div>
           <button className="auth-submit checkout-submit" type="button" disabled={busy} onClick={() => startPurchase("cart")}>{busy ? "Placing order…" : "Place order"}</button>
           <p className="checkout-payment-note">{paymentMode === "demo" ? "Demo mode completes the purchase without charging a real payment method." : hostedMethods.length ? `Next, choose how to pay: ${hostedMethods.map((method) => paymentMethodInfo[method].label.replace("Pay with ", "")).join(" or ")}. Codes are delivered as soon as the payment is confirmed.` : "Placing an order reserves inventory. Codes are delivered after Stripe confirms payment."}</p></>
           : <p className="checkout-empty">Your cart is empty. Choose a product and add a quantity to continue.</p>}

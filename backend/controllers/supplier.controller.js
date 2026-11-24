@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { Order } from "../models/order.model.js";
 import { Product } from "../models/product.model.js";
 import { ProductActivity } from "../models/product-activity.model.js";
+import { config } from "../config/env.js";
 import {
   SUPPLIER_CATEGORIES, SUPPLIER_PERIODS, SUPPLIER_PROTOCOLS, SupplierError,
   accountInfo, extractProxies, getPrice, listCategories, listPlans, orderDetails, parseCategory, parseLocationTree, placeOrder, supplierConfigured,
@@ -218,7 +219,7 @@ export async function listProxyStore(_req, res, next) {
         isps: tree.isps, countries: tree.countries, locationsError,
       };
     }));
-    res.json({ types: types.filter(Boolean), maxQuantity: SUPPLIER_MAX_QUANTITY, available: supplierConfigured() });
+    res.json({ types: types.filter(Boolean), maxQuantity: SUPPLIER_MAX_QUANTITY, available: supplierConfigured(), serviceFeePercent: config.serviceFeePercent });
   } catch (error) { next(error); }
 }
 

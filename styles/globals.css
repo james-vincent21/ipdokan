@@ -349,6 +349,12 @@ a { color: inherit; }
 .checkout-totals { display: grid; gap: 8px; border-top: 1px solid var(--line); margin-top: 8px; padding-top: 14px; }
 .checkout-totals p { display: flex; justify-content: space-between; gap: 15px; margin: 0; color: #9ca8bc; font-size: 12px; }
 .checkout-totals strong { color: #f2f5fc; font-size: 14px; }
+.checkout-total-group { display: grid; gap: 6px; }
+.checkout-total-group + .checkout-total-group { border-top: 1px dashed var(--line); padding-top: 10px; }
+.checkout-total-due span { color: #cfd7e4; font-weight: 700; }
+.product-detail-charges { display: grid; gap: 4px; }
+.product-detail-charges p { display: flex; justify-content: space-between; gap: 12px; margin: 0; color: #9ca8bc; font-size: 12px; }
+.product-detail-charges p span:last-child { color: #d6deea; }
 .checkout-submit { width: 100%; margin-top: 15px; }
 .checkout-payment-note { margin: 10px 0 0; color: #8f9bb0; font-size: 10px; line-height: 1.6; }
 .checkout-back-link { display: inline-flex; margin-top: 20px; color: #a9c0ff; font-size: 12px; text-decoration: none; }
@@ -1026,6 +1032,9 @@ a.product-purchase-button { display: inline-flex; align-items: center; justify-c
 .proxy-plan-card h3 { margin: 0; font-size: 17px; letter-spacing: -.01em; }
 .proxy-plan-price { margin: 0; color: #78a0ff; font-size: 30px; font-weight: 700; letter-spacing: -.03em; }
 .proxy-plan-price small { color: #8e9bb1; font-size: 13px; font-weight: 500; letter-spacing: 0; }
+.proxy-plan-per-ip { margin: -4px 0 0; color: #9ca8bc; font-size: 13px; font-weight: 600; }
+.variant-per-ip { opacity: .75; }
+.product-detail-per-ip { margin: -6px 0 0; color: #9ca8bc; font-size: 12px; text-align: right; }
 .proxy-plan-contact { color: #f0c36b; font-size: 16px; letter-spacing: 0; }
 .proxy-plan-card ul { display: grid; gap: 7px; margin: 0; padding: 12px 0 0; border-top: 1px solid var(--line); list-style: none; color: #c7cfdd; font-size: 13.5px; }
 .proxy-plan-card ul li::before { margin-right: 8px; color: #82a5ff; content: "•"; }

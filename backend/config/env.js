@@ -26,6 +26,10 @@ if (authEnabled && (!mongoUri || !betterAuthSecret || betterAuthSecret.length < 
   throw new Error("AUTH_ENABLED=true requires MONGODB_URI and a BETTER_AUTH_SECRET of at least 32 characters.");
 }
 
+// Service + additional fee charged on top of the product price, in percent.
+const serviceFeePercent = process.env.SERVICE_FEE_PERCENT === undefined || process.env.SERVICE_FEE_PERCENT === "" ? 5 : Number(process.env.SERVICE_FEE_PERCENT);
+if (!Number.isFinite(serviceFeePercent) || serviceFeePercent < 0 || serviceFeePercent > 50) throw new Error("SERVICE_FEE_PERCENT must be a number from 0 to 50.");
+
 const frontendOrigin = process.env.FRONTEND_ORIGIN || "http://localhost:3000";
 const authUrl = process.env.BETTER_AUTH_URL || "http://localhost:4000";
 const demoAdminEnabled = process.env.DEMO_ADMIN_ENABLED === "true";
@@ -37,6 +41,7 @@ if (demoAdminEnabled && (!demoAdminEmail || (demoAdminPassword && demoAdminPassw
 export const config = {
   port: Number(process.env.API_PORT || 4000),
   frontendOrigin,
+  serviceFeePercent,
   authEnabled,
   mongoUri,
   mongoDatabase: process.env.MONGODB_DATABASE || "ipdokan",
