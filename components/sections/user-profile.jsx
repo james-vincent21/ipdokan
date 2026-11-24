@@ -30,7 +30,7 @@ export function UserProfile() {
     async function loadOrders(attempt = 0) {
       try {
         // Ask the server to verify the payment with the gateway directly, in case its webhook has not arrived yet.
-        if (returnedFrom && targetOrderIds.length && attempt % 3 === 0) {
+        if (returnedFrom && targetOrderIds.length && attempt < 30 && attempt % 3 === 0) {
           await fetch(`${apiUrl}/api/payments/${returnedFrom}/confirm`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderIds: targetOrderIds }) }).catch(() => {});
         }
         const orderResponse = await fetch(`${apiUrl}/api/orders`, { credentials: "include", cache: "no-store" });
@@ -41,7 +41,10 @@ export function UserProfile() {
         setOrders(nextOrders);
         const targetOrders = nextOrders.filter((order) => targetOrderIds.includes(String(order.id)));
         const paymentDelivered = targetOrderIds.length > 0 && targetOrders.length === targetOrderIds.length && targetOrders.every((order) => order.status === "paid");
+        // Proxy orders: the provider can need a few minutes after payment, so keep checking until the IPs appear.
+        const waitingForProxies = nextOrders.some((order) => order.isProxyOrder && (order.status === "processing" || (order.status === "paid" && order.deliveryPending)));
         if (targetOrderIds.length && !paymentDelivered && attempt < 30) retryTimer = window.setTimeout(() => loadOrders(attempt + 1), 1000);
+        else if (waitingForProxies && attempt < 120) retryTimer = window.setTimeout(() => loadOrders(attempt + 1), 5000);
       } catch { /* Keep the profile visible if order history is temporarily unavailable. */ }
     }
     fetch(`${apiUrl}/api/profile`, { credentials: "include" })
@@ -113,7 +116,8 @@ export function UserProfile() {
                 </div>}
                 {order.status === "pending" && <p className="profile-order-hint">{order.isProxyOrder ? "Your proxies will be set up automatically as soon as payment is confirmed." : "Your codes will appear here as soon as payment is confirmed."}</p>}
                 {order.isProxyOrder && order.status === "processing" && <p className="profile-order-hint">Payment received. We are setting up your proxies; this usually takes a few minutes. Contact support if it takes longer.</p>}
-                {order.isProxyOrder && order.status === "paid" && <p className="profile-order-hint">Format: IP:port:username:password. The IP address you ordered from is also whitelisted, so it can connect without a password.</p>}
+                {order.isProxyOrder && order.status === "paid" && order.deliveryPending && <p className="profile-order-hint">Payment received and your proxy is ordered. The provider is setting up the IP, which usually takes 1–3 minutes. This page updates by itself.</p>}
+                {order.isProxyOrder && order.status === "paid" && !order.deliveryPending && <p className="profile-order-hint">Format: IP:port:username:password. The IP address you ordered from is also whitelisted, so it can connect without a password.</p>}
                 {order.status === "paid" && <footer><button type="button" className="invoice-download" onClick={() => { if (!downloadInvoicePdf(order, user)) setMessage("Allow pop-ups to download your invoice as a PDF."); }}>Download invoice PDF</button></footer>}
               </article>;
             })}</div> : <div className="profile-empty-orders"><strong>No purchases yet</strong><p>Products you buy will show up here with their codes and invoices.</p><Link className="profile-home-link" href="/catalog">Browse products</Link></div>}

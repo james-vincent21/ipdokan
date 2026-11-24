@@ -29,7 +29,7 @@ async function startServer() {
   }
   setInterval(() => {
     refreshSupplierDeliveries().catch((error) => console.error("Could not refresh supplier deliveries:", error.message));
-  }, 2 * 60 * 1000).unref();
+  }, 30 * 1000).unref();
 
   app.listen(config.port, () => {
     console.log(`IP Dokan API listening on http://localhost:${config.port}`);

@@ -119,23 +119,47 @@ export async function fulfillSupplierOrder(orderId) {
     for (const item of order.supplierOrders.map((entry) => entry.toObject?.() ?? entry)) {
       supplierOrders.push(item.proxies?.length ? item : { ...item, ...(await loadProxies(item)) });
     }
+    const delivery = rebuildDelivery(supplierOrders);
     await Order.updateOne({ _id: order._id }, { $set: {
-      supplierOrders, ...rebuildDelivery(supplierOrders), status: "paid", paidAt: order.paidAt || new Date(),
+      supplierOrders, ...delivery, status: "paid", paidAt: order.paidAt || new Date(),
       supplierError: "", supplierUncertain: false, supplierLockUntil: null, supplierCheckedAt: new Date(),
     } });
+    if (delivery.supplierDeliveryPending) scheduleQuickDeliveryChecks(order._id);
   } catch (error) {
     console.error(`Supplier fulfilment crashed for ${order._id}:`, error);
     await release({ supplierError: "Delivery stopped unexpectedly. Use Retry delivery." }).catch(() => {});
   }
 }
 
-// Background job: re-checks paid supplier orders whose proxy list was not ready yet.
+// The supplier usually needs a short while to set up the IPs after an order is placed. Right after
+// payment the order is re-checked every few seconds (not awaited, so payment webhooks answer at once);
+// the background job below takes over if the IPs are still not ready after these checks.
+const QUICK_CHECK_DELAYS_MS = [5, 5, 5, 10, 10, 15, 15, 20, 20, 30].map((seconds) => seconds * 1000);
+
+function scheduleQuickDeliveryChecks(orderId, step = 0) {
+  if (step >= QUICK_CHECK_DELAYS_MS.length) return;
+  setTimeout(async () => {
+    try {
+      await refreshDelivery(orderId);
+      const order = await Order.findById(orderId, { supplierDeliveryPending: 1 }).lean();
+      if (order?.supplierDeliveryPending) scheduleQuickDeliveryChecks(orderId, step + 1);
+    } catch (error) { console.error(`Quick delivery check for ${orderId} failed:`, error.message); }
+  }, QUICK_CHECK_DELAYS_MS[step]).unref();
+}
+
+// Background job (every 30 seconds): re-checks paid supplier orders whose proxy list was not ready yet.
+// Orders paid within the last hour are checked every 30 seconds, older ones every 5 minutes.
 export async function refreshSupplierDeliveries() {
   if (!supplierConfigured()) return 0;
+  const now = Date.now();
   const orders = await Order.find({
     source: "myproxyapi", status: "paid", supplierDeliveryPending: true,
-    paidAt: { $gte: new Date(Date.now() - DELIVERY_RETRY_WINDOW_MS) },
-    $or: [{ supplierCheckedAt: null }, { supplierCheckedAt: { $lt: new Date(Date.now() - 2 * 60 * 1000) } }],
+    paidAt: { $gte: new Date(now - DELIVERY_RETRY_WINDOW_MS) },
+    $or: [
+      { supplierCheckedAt: null },
+      { paidAt: { $gte: new Date(now - 60 * 60 * 1000) }, supplierCheckedAt: { $lt: new Date(now - 25 * 1000) } },
+      { supplierCheckedAt: { $lt: new Date(now - 5 * 60 * 1000) } },
+    ],
   }, { _id: 1 }).limit(20).lean();
   for (const { _id } of orders) await refreshDelivery(_id);
   return orders.length;
@@ -148,7 +172,12 @@ async function refreshDelivery(orderId) {
   for (const item of order.supplierOrders.map((entry) => entry.toObject())) {
     supplierOrders.push(item.proxies?.length ? item : { ...item, ...(await loadProxies(item)) });
   }
-  await Order.updateOne({ _id: order._id }, { $set: { supplierOrders, ...rebuildDelivery(supplierOrders), supplierLockUntil: null, supplierCheckedAt: new Date() } });
+  const delivery = rebuildDelivery(supplierOrders);
+  await Order.updateOne({ _id: order._id }, { $set: { supplierOrders, ...delivery, supplierLockUntil: null, supplierCheckedAt: new Date() } });
+  // Shows in the API log how long the supplier took to set up the IPs.
+  if (order.supplierDeliveryPending && !delivery.supplierDeliveryPending && order.paidAt) {
+    console.log(`Proxies delivered for order ${order._id} ${Math.round((Date.now() - new Date(order.paidAt).getTime()) / 1000)}s after payment.`);
+  }
 }
 
 // ----- Admin endpoints -----
