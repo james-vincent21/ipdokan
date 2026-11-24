@@ -14,7 +14,7 @@ const LOCK_MS = 3 * 60 * 1000;
 const DELIVERY_RETRY_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
 const MAX_DETAILS_BYTES = 32 * 1024;
 
-const pendingLine = (supplierOrder) => `Order ${supplierOrder.orderId}${supplierOrder.planName ? ` (${supplierOrder.planName})` : ""}: your proxies are being prepared and will appear here shortly.`;
+const pendingLine = (supplierOrder) => `Order ${supplierOrder.orderId}${supplierOrder.planName ? ` (${supplierOrder.planName})` : ""}: your proxy is being prepared. Please be patient, it will arrive within 3–5 minutes.`;
 
 function compactDetails(details) {
   try {

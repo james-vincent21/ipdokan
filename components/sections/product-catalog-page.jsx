@@ -113,7 +113,7 @@ export function ProductCatalogPage() {
               <div className="store-product-info">
                 <h2>{product.name}</h2>
                 <p className="store-product-category">{product.category || product.categories?.[0] || "Product"}</p>
-                {product.instantDelivery && <p className="instant-delivery-badge">⚡ Instant delivery</p>}
+                {product.instantDelivery && <p className="instant-delivery-badge">⚡ Ready in 3–5 min</p>}
                 <p className="store-product-rating" aria-label={`${product.rating || 0} out of 5 stars`}><span>{Array.from({ length: 5 }, (_, index) => <i key={index} className={index < stars ? "is-filled" : ""}>★</i>)}</span>{Number(product.reviewCount || product.reviews) > 0 && <small>({product.reviewCount || product.reviews})</small>}</p>
                 <p className={product.available ? "catalog-stock" : "catalog-stock is-empty"}>{product.available || 0} in stock</p>
                 <strong className="store-product-price">{multiPriceLabel}</strong>

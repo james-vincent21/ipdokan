@@ -397,7 +397,7 @@ export function CheckoutPage() {
         <div className="admin-card product-detail-info">
           <span className="product-detail-category">{selectedProduct.category || "Product"}</span>
           <h2>{selectedProduct.name}</h2>
-          {selectedProduct.instantDelivery && <p className="instant-delivery-badge">⚡ Instant delivery: your proxies are set up automatically right after payment.</p>}
+          {selectedProduct.instantDelivery && <p className="instant-delivery-badge">⚡ Automatic delivery: after payment your proxy is prepared and arrives within 3–5 minutes.</p>}
           {selectedProduct.rating > 0 && <p className="product-detail-rating">★ {Number(selectedProduct.rating).toFixed(1)} {selectedProduct.reviewCount ? `(${selectedProduct.reviewCount} reviews)` : ""}</p>}
           <p className="product-detail-description">{selectedProduct.description || "Product details and plan options."}</p>
           <p className="product-detail-sku">SKU: {selectedProduct.codeNumber}</p>

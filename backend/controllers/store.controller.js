@@ -381,7 +381,7 @@ async function createSupplierOrder(req, res, { product, variant, quantity, curre
   });
   order.invoiceId = getInvoiceId(order);
   await order.save();
-  res.status(201).json({ order: { id: order.id, productName: order.productName, quantity: order.quantity, amount: order.amount, currency: order.currency, status: order.status }, message: "Order created. Your proxies will be set up automatically after payment." });
+  res.status(201).json({ order: { id: order.id, productName: order.productName, quantity: order.quantity, amount: order.amount, currency: order.currency, status: order.status }, message: "Order created. After payment your proxy is prepared automatically and arrives within 3–5 minutes." });
 }
 
 export async function listMyOrders(req, res, next) {

@@ -143,7 +143,7 @@ export function ProxyStore() {
     <header className="proxy-store-heading">
       <span className="auth-kicker">IP DOKAN PROXIES</span>
       <h1>Choose your proxy type</h1>
-      <p>Pick a type, choose a plan, then select the location and provider you want. Proxies are set up automatically after payment.</p>
+      <p>Pick a type, choose a plan, then select the location and provider you want. Proxies are set up automatically after payment and arrive within 3–5 minutes.</p>
     </header>
 
     <div className="proxy-type-grid" role="tablist" aria-label="Proxy type">
@@ -177,7 +177,7 @@ export function ProxyStore() {
               {price > 0 && item.ips > 1 && <p className="proxy-plan-per-ip">{formatPrice(price / item.ips, currency)} per IP</p>}
               <ul>
                 <li>{item.ips} dedicated {item.ips === 1 ? "IP" : "IPs"}</li>
-                <li>Instant setup</li>
+                <li>Ready in 3–5 minutes</li>
                 <li>Unlimited bandwidth</li>
                 <li>HTTP/HTTPS &amp; SOCKS5</li>
               </ul>

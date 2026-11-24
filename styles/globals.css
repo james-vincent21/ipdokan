@@ -1132,3 +1132,5 @@ a.product-purchase-button { display: inline-flex; align-items: center; justify-c
   .nav-link-highlight .nav-icon { background: rgb(255 194 77 / 14%); }
   .nav-link-highlight { grid-column: 1 / -1; }
 }
+
+.profile-order-hint.profile-order-wait { border-left: 3px solid #f5b942; padding-left: 10px; color: #f3d48a; }
