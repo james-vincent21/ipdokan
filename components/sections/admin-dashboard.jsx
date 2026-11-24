@@ -35,6 +35,8 @@ export function AdminDashboard() {
   const [orderFilter, setOrderFilter] = useState(defaultOrderFilter);
   const [chartCurrency, setChartCurrency] = useState("USD");
   const [locationOptions, rememberLocations] = useSupplierLocations();
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageError, setImageError] = useState("");
   const isApiProduct = product.source === "myproxyapi";
   const filteredOrders = useMemo(() => filterOrders(orders, orderFilter), [orders, orderFilter]);
   const orderSummary = useMemo(() => summarizeOrders(filteredOrders), [filteredOrders]);
@@ -50,6 +52,22 @@ export function AdminDashboard() {
     if (!response.ok) throw new Error(result.error || "Request failed.");
     return result;
   }, []);
+
+  // Uploads the chosen file to Cloudinary through the API; the returned URL is saved with the product.
+  async function uploadImage(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setImageError("");
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"].includes(file.type)) return setImageError("Choose a JPG, PNG, WebP, GIF or AVIF image.");
+    if (file.size > 5 * 1024 * 1024) return setImageError("The image must be 5 MB or smaller.");
+    setImageUploading(true);
+    try {
+      const result = await api("/admin/uploads/product-image", { method: "POST", body: file, headers: { "Content-Type": file.type } });
+      setProduct((current) => ({ ...current, imageUrl: result.url }));
+    } catch (uploadError) { setImageError(uploadError.message); }
+    finally { setImageUploading(false); }
+  }
 
   const refresh = useCallback(async (force = false) => {
     if (!force && adminDashboardCache) {
@@ -216,7 +234,18 @@ export function AdminDashboard() {
             <label>Product name<input required maxLength={120} value={product.name} onChange={(event) => setProduct({ ...product, name: event.target.value })} /></label>
             <label>Code number / SKU<input required maxLength={80} value={product.codeNumber} onChange={(event) => setProduct({ ...product, codeNumber: event.target.value })} /></label>
             <label>Description<textarea maxLength={2000} value={product.description} onChange={(event) => setProduct({ ...product, description: event.target.value })} /></label>
-            <label>Image URL<input type="url" placeholder="https://…" value={product.imageUrl} onChange={(event) => setProduct({ ...product, imageUrl: event.target.value })} /></label>
+            <div className="admin-image-field"><span>Product image <span className="admin-help-text">Uploaded to Cloudinary. Click Save to keep it on the product.</span></span>
+              <div className="admin-image-row">
+                <div className="admin-image-preview">{product.imageUrl ? <img src={product.imageUrl} alt="Product preview" /> : <span>No image</span>}</div>
+                <div className="admin-image-actions">
+                  <label className={`admin-secondary admin-image-upload${imageUploading ? " is-busy" : ""}`}>{imageUploading ? "Uploading…" : product.imageUrl ? "Change image" : "Upload image"}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" disabled={imageUploading} onChange={uploadImage} /></label>
+                  {product.imageUrl && <button type="button" className="admin-secondary" disabled={imageUploading} onClick={() => setProduct({ ...product, imageUrl: "" })}>Remove</button>}
+                  <small className="admin-help-text">JPG, PNG, WebP, GIF or AVIF, up to 5 MB.</small>
+                </div>
+              </div>
+              {imageError && <p className="admin-image-error" role="alert">{imageError}</p>}
+              <label>Or paste an image URL<input type="url" placeholder="https://…" value={product.imageUrl} onChange={(event) => setProduct({ ...product, imageUrl: event.target.value })} /></label>
+            </div>
             <label>Brand / provider <span className="admin-help-text">Products with the same brand appear together, for example 9proxy.</span><input placeholder="9proxy" value={product.brand} onChange={(event) => setProduct({ ...product, brand: event.target.value })} /></label>
             <label>Category <span className="admin-help-text">This product appears under the matching navigation category.</span><select required value={product.category} onChange={(event) => setProduct({ ...product, category: event.target.value })}>{!productCategories.includes(product.category) && product.category && <option value={product.category}>{product.category} (existing category)</option>}{productCategories.map((categoryName) => <option key={categoryName} value={categoryName}>{categoryName}</option>)}</select></label>
             <div className="admin-form-row"><label>Discount % <span className="admin-help-text">Shown as a badge only; the set product price is not reduced.</span><input type="number" min="0" max="99" value={product.discountPercent} onChange={(event) => setProduct({ ...product, discountPercent: event.target.value })} /></label><label>Rating (0–5)<input type="number" min="0" max="5" step="0.1" value={product.rating} onChange={(event) => setProduct({ ...product, rating: event.target.value })} /></label><label>Review count<input type="number" min="0" step="1" value={product.reviewCount} onChange={(event) => setProduct({ ...product, reviewCount: event.target.value })} /></label></div>

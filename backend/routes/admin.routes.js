@@ -1,7 +1,8 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { requireAdmin } from "../middleware/admin.middleware.js";
 import { addAdminEmail, addCodes, addProduct, adminOrders, adminOverview, adminProducts, adminReviews, adminUsers, cancelOrder, confirmOrderPayment, deleteProduct, deleteProductReview, editProduct, listAdminEmails, productActivity, removeAdminEmail, replyToProductReview, setProductStock } from "../controllers/store.controller.js";
+import { IMAGE_TYPES, MAX_IMAGE_BYTES, imageTooLarge, uploadProductImage } from "../controllers/upload.controller.js";
 import { importSupplierProducts, retrySupplierDelivery, setSupplierDelivery, supplierPlans, supplierPrice, supplierStatus } from "../controllers/supplier.controller.js";
 
 const router = Router();
@@ -12,6 +13,7 @@ router.post("/admins", addAdminEmail);
 router.delete("/admins/:id", removeAdminEmail);
 router.get("/overview", adminOverview);
 router.get("/products", adminProducts);
+router.post("/uploads/product-image", express.raw({ type: IMAGE_TYPES, limit: MAX_IMAGE_BYTES }), uploadProductImage, imageTooLarge);
 router.post("/products", addProduct);
 router.patch("/products/:id", editProduct);
 router.delete("/products/:id", deleteProduct);

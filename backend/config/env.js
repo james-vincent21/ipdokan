@@ -20,6 +20,9 @@ const zinipayBaseUrl = (process.env.ZINIPAY_BASE_URL || "https://api.zinipay.com
 const cryptomusMerchantId = process.env.CRYPTOMUS_MERCHANT_ID || "";
 const cryptomusPaymentKey = process.env.CRYPTOMUS_PAYMENT_KEY || "";
 const cryptomusEnabled = Boolean(cryptomusMerchantId && cryptomusPaymentKey);
+const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME || "";
+const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY || "";
+const cloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET || "";
 const demoPaymentEnabled = process.env.NODE_ENV !== "production" && !stripeSecretKey && !zinipayApiKey && !cryptomusEnabled;
 
 if (authEnabled && (!mongoUri || !betterAuthSecret || betterAuthSecret.length < 32)) {
@@ -54,6 +57,11 @@ export const config = {
   cryptomusMerchantId,
   cryptomusPaymentKey,
   cryptomusEnabled,
+  // Cloudinary: product images uploaded from the admin panel.
+  cloudinaryCloudName,
+  cloudinaryApiKey,
+  cloudinaryApiSecret,
+  cloudinaryEnabled: Boolean(cloudinaryCloudName && cloudinaryApiKey && cloudinaryApiSecret),
   // MyProxyApi reseller API: proxies sold from it are ordered automatically after payment.
   myproxyapiBaseUrl: (process.env.MYPROXYAPI_BASE_URL || "https://reseller.myproxyapi.com/api/v1").replace(/\/+$/, ""),
   myproxyapiUsername: process.env.MYPROXYAPI_USERNAME || "",
