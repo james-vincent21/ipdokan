@@ -122,13 +122,13 @@ export function TelegramBotCta() {
               <div className="tg-screen tg-screen-search">
                 <div className="tg-search is-active"><SearchGlyph /><span className="tg-typed">ipdokanbot</span><span className="tg-caret" /><span className="tg-cancel">Cancel</span></div>
                 <small className="tg-section-label">Chats and bots</small>
-                <div className="tg-row tg-result"><span className="tg-avatar tg-avatar-bot"><img src="/ip.png" alt="" /></span><span className="tg-row-text"><strong>IPDokan Proxy Store</strong><small>@ipdokanbot · bot</small></span><i className="tg-tap" /></div>
+                <div className="tg-row tg-result"><span className="tg-avatar tg-avatar-bot"><img src="/ip.png" alt="" loading="lazy" decoding="async" /></span><span className="tg-row-text"><strong>IPDokan Proxy Store</strong><small>@ipdokanbot · bot</small></span><i className="tg-tap" /></div>
               </div>
               {/* 3. The bot's profile; "Message" is tapped */}
               <div className="tg-screen tg-screen-profile">
                 <div className="telegram-device-nav"><span>‹</span><span>IPDokan</span><span>···</span></div>
                 <div className="telegram-profile">
-                  <span className="telegram-profile-logo"><img src="/ip.png" alt="" /></span>
+                  <span className="telegram-profile-logo"><img src="/ip.png" alt="" loading="lazy" decoding="async" /></span>
                   <strong>IPDokan Proxy Store</strong>
                   <small>Telegram support</small>
                 </div>
@@ -142,7 +142,7 @@ export function TelegramBotCta() {
               </div>
               {/* 4. The chat with the bot opens: /start and the welcome menu */}
               <div className="tg-screen tg-screen-chat">
-                <div className="tg-chat-head"><span className="tg-back">‹</span><span className="tg-avatar tg-avatar-bot"><img src="/ip.png" alt="" /></span><span className="tg-row-text"><strong>IPDokan Proxy Store</strong><small>bot</small></span></div>
+                <div className="tg-chat-head"><span className="tg-back">‹</span><span className="tg-avatar tg-avatar-bot"><img src="/ip.png" alt="" loading="lazy" decoding="async" /></span><span className="tg-row-text"><strong>IPDokan Proxy Store</strong><small>bot</small></span></div>
                 <div className="tg-messages">
                   <p className="tg-bubble tg-out tg-msg-1">/start</p>
                   <p className="tg-bubble tg-in tg-msg-2">👋 Welcome to IPDokan Proxy Store!</p>

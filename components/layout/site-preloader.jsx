@@ -1,11 +1,12 @@
 // Loading screen shown before the site appears (once per browser session): the IP DOKAN logo animates in,
 // a percentage counts up, and data travels from a cell tower through a proxy server to a home router.
 // The markup is server-rendered so it shows instantly; PRELOADER_SCRIPT (inline, before React starts)
-// drives the percentage and adds "pl-done" to <html> when the page has loaded. PRELOADER_HEAD_SCRIPT
+// drives the percentage and adds "pl-done" to <html> once the page is ready (DOMContentLoaded: the
+// content is there; images further down keep loading behind it). PRELOADER_HEAD_SCRIPT
 // adds "pl-skip" when it was already shown in this session, so it never flashes.
 const SEEN_KEY = "ipdokan-preloaded";
 const MIN_MS = 1500;
-const MAX_MS = 7000;
+const MAX_MS = 5000;
 
 export const PRELOADER_HEAD_SCRIPT = `(function(){try{if(sessionStorage.getItem("${SEEN_KEY}"))document.documentElement.classList.add("pl-skip")}catch(e){}})()`;
 
@@ -16,7 +17,7 @@ var pct=root.querySelector(".pl-pct"),bar=root.querySelector(".pl-bar i"),start=
 function finish(){if(ended)return;ended=true;h.classList.add("pl-done");try{sessionStorage.setItem("${SEEN_KEY}","1")}catch(e){}}
 function tick(){var t=(Date.now()-start)/1000;var cap=done?100:Math.min(94,100*(1-Math.exp(-t/0.9)));shown+=(cap-shown)*0.12;if(done&&100-shown<0.8)shown=100;var v=Math.floor(shown);pct.textContent=v+"%";bar.style.width=v+"%";if(v>=100){setTimeout(finish,180);return}requestAnimationFrame(tick)}
 function ready(){setTimeout(function(){done=true},Math.max(0,${MIN_MS}-(Date.now()-start)))}
-if(document.readyState==="complete")ready();else window.addEventListener("load",ready);
+if(document.readyState!=="loading")ready();else document.addEventListener("DOMContentLoaded",ready);
 setTimeout(function(){done=true},${MAX_MS});
 requestAnimationFrame(tick);
 }catch(e){document.documentElement.classList.add("pl-done")}})()`;
