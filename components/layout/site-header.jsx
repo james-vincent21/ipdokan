@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { authClient } from "@/lib/auth-client";
 import { clearAdminDashboardCache } from "@/lib/admin-dashboard-cache";
 import { useCurrencyPreference } from "@/lib/currency-preference";
 import { Icon } from "@/components/ui/icons";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { productHref } from "@/lib/proxy-links";
+import { NotificationBell } from "@/components/layout/notification-bell";
+import { cartCount, onCartChange, readCart } from "@/lib/cart-store";
+
+// Number of items in the cart, kept live (this tab, other tabs and, when signed in, other devices).
+const useCartCount = () => useSyncExternalStore(onCartChange, () => cartCount(readCart()), () => 0);
 
 // Product categories shown under "Services" in the nav (and searchable on their own).
 // Discount Proxy Panel sits directly in the nav so every visitor sees it.
@@ -57,6 +62,18 @@ export function SiteHeader() {
   const [authBusy, setAuthBusy] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currency, setCurrency] = useCurrencyPreference();
+  const itemsInCart = useCartCount();
+  const headerRef = useRef(null);
+
+  // Marks the header once the page is scrolled (dark mode: black at the top, ash grey after).
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return undefined;
+    const update = () => header.classList.toggle("is-scrolled", window.scrollY > 4);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
   const searchInputRef = useRef(null);
   const navRef = useRef(null);
   const indicatorRef = useRef(null);
@@ -228,7 +245,7 @@ export function SiteHeader() {
 
   return (
     <>
-    <header className="site-header" id="top">
+    <header className="site-header" id="top" ref={headerRef}>
       <div className="nav-shell">
         <a className="brand" href="/" aria-label="IP DOKAN home">
           <img className="brand-logo" src="/ip-dokan-logo.svg" alt="IP DOKAN" />
@@ -275,7 +292,7 @@ export function SiteHeader() {
           <div className="nav-actions">
             {/* Wallet and cart sit on the right, next to the account controls. */}
             <a className="nav-link nav-action-link wallet-nav-link" data-nav-key="wallet" href="/wallet" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="wallet" /></span>Wallet</a>
-            <a className="nav-link nav-action-link cart-nav-link" data-nav-key="cart" href="/checkout" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="cart" /></span>Cart</a>
+            <a className="nav-link nav-action-link cart-nav-link" data-nav-key="cart" href="/checkout" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="cart" />{itemsInCart > 0 && <span className="cart-count" aria-label={`${itemsInCart} in cart`}>{itemsInCart > 99 ? "99+" : itemsInCart}</span>}</span>Cart</a>
             <ThemeToggle />
             <div className="nav-currency-toggle" aria-label="Choose display currency"><button type="button" className={currency === "USD" ? "is-selected" : ""} aria-pressed={currency === "USD"} onClick={() => setCurrency("USD")}>USD</button><button type="button" className={currency === "BDT" ? "is-selected" : ""} aria-pressed={currency === "BDT"} onClick={() => setCurrency("BDT")}>BDT</button></div>
             {session?.user ? <><a className="sign-in signed-in-user" href="/profile" title="Open your account" onClick={() => setMenuOpen(false)}>
@@ -287,6 +304,7 @@ export function SiteHeader() {
             </button>}
           </div>
         </nav>
+        <NotificationBell signedIn={Boolean(session?.user)} />
         <button className="nav-search-trigger" type="button" aria-label="Search services" onClick={() => { setSearchQuery(""); setSearchOpen(true); setMenuOpen(false); }}>
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" strokeWidth="1.8" /><path d="m16 16 4.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
         </button>

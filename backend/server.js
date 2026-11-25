@@ -31,8 +31,13 @@ async function startServer() {
     refreshSupplierDeliveries().catch((error) => console.error("Could not refresh supplier deliveries:", error.message));
   }, 30 * 1000).unref();
 
-  app.listen(config.port, () => {
-    console.log(`IP Dokan API listening on http://localhost:${config.port}`);
+  // One HTTP server for the API and Socket.IO (live notifications and cart sync at /api/socket.io).
+  const { createServer } = await import("node:http");
+  const { initRealtime } = await import("./lib/realtime.js");
+  const httpServer = createServer(app);
+  initRealtime(httpServer);
+  httpServer.listen(config.port, () => {
+    console.log(`IP Dokan API listening on http://localhost:${config.port} (Socket.IO at /api/socket.io)`);
   });
 }
 

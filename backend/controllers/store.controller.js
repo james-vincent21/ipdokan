@@ -8,6 +8,7 @@ import { config } from "../config/env.js";
 import { SUPPLIER_CATEGORIES, SupplierError, availableBalanceUsd, categoryLocations, getPrice, isIpv4, supplierConfigured } from "../lib/myproxyapi.js";
 import { SUPPLIER_MAX_QUANTITY, fulfillSupplierOrder, lowestSetPrice, supplierVariantsInput } from "./supplier.controller.js";
 import { withServiceFee } from "../utils/service-fee.js";
+import { notifyOrderPaid } from "../lib/order-notifications.js";
 
 function parseCodeList(input) {
   const list = Array.isArray(input) ? input : typeof input === "string" ? input.split(/\r?\n/) : [];
@@ -462,6 +463,7 @@ export async function fulfillPaidOrder(orderId, { method, reference, paymentInte
   await Order.updateOne({ _id: order._id, status: "processing", paymentMethod: method, paymentReference: reference }, {
     $set: { status: "paid", deliveredCode: deliveredCodes[0] || "", deliveredCodes, paidAt: new Date() },
   });
+  notifyOrderPaid(order._id);
 }
 
 export async function stripeWebhook(req, res, next) {
@@ -824,6 +826,7 @@ export async function confirmOrderPayment(req, res, next) {
     else await Product.updateOne({ _id: order.productId }, { $set: { "codes.$[code].status": "sold" } }, { arrayFilters: [{ "code.orderId": order._id, "code.status": "reserved" }] });
     const updated = await Order.findOneAndUpdate({ _id: order._id, status: "processing" }, { $set: { status: "paid", deliveredCode: claimedCodes[0], deliveredCodes: claimedCodes, paidAt: new Date() } }, { new: true });
     if (!updated) throw new Error("Order could not be completed.");
+    notifyOrderPaid(updated._id);
     res.json({ order: updated });
   } catch (error) {
     if (claimedCodes.length && productId) {

@@ -5,9 +5,9 @@ import { downloadInvoicePdf } from "@/lib/invoice-download";
 import { Icon } from "@/components/ui/icons";
 import { useCurrencyPreference } from "@/lib/currency-preference";
 import { DEFAULT_SERVICE_FEE_PERCENT, sumWithServiceFee, withServiceFee } from "@/lib/service-fee";
+import { onCartChange, readCart, writeCart } from "@/lib/cart-store";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-const cartKey = "ipdokan-cart-v1";
 
 // Hosted payment gateways; each one charges in a single currency.
 const paymentMethodInfo = {
@@ -103,11 +103,7 @@ export function CheckoutPage() {
     setProductId(new URLSearchParams(window.location.search).get("product") || pathProductId);
     setIsProductPage(Boolean(pathProductId));
     setProductName(new URLSearchParams(window.location.search).get("name") || "");
-    try {
-      const savedCart = JSON.parse(window.localStorage.getItem(cartKey) || "[]");
-      setCart(Array.isArray(savedCart) ? savedCart.filter((item) => item && typeof item.productId === "string" && Number.isInteger(item.quantity) && item.quantity > 0) : []);
-    }
-    catch { setCart([]); }
+    setCart(readCart());
     fetch(`${apiUrl}/api/products`, { cache: "no-store" }).then(async (response) => {
       const result = await response.json();
       if (response.ok) {
@@ -231,8 +227,11 @@ export function CheckoutPage() {
 
   function persistCart(nextCart) {
     setCart(nextCart);
-    window.localStorage.setItem(cartKey, JSON.stringify(nextCart));
+    try { writeCart(nextCart); } catch { /* storage blocked: the cart lasts for this page only */ }
   }
+
+  // Shows changes made in another tab or on another device (signed-in customers) right away.
+  useEffect(() => onCartChange((items) => setCart(items)), []);
 
   useEffect(() => {
     if (!products.length || !cart.length) return;

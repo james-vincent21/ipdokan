@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { Order } from "../models/order.model.js";
+import { notifyOrderPaid, notifyProxiesReady } from "../lib/order-notifications.js";
 import { Product } from "../models/product.model.js";
 import { ProductActivity } from "../models/product-activity.model.js";
 import { config } from "../config/env.js";
@@ -125,6 +126,7 @@ export async function fulfillSupplierOrder(orderId) {
       supplierError: "", supplierUncertain: false, supplierLockUntil: null, supplierCheckedAt: new Date(),
     } });
     if (delivery.supplierDeliveryPending) scheduleQuickDeliveryChecks(order._id);
+    if (order.status !== "paid") notifyOrderPaid(order._id);
   } catch (error) {
     console.error(`Supplier fulfilment crashed for ${order._id}:`, error);
     await release({ supplierError: "Delivery stopped unexpectedly. Use Retry delivery." }).catch(() => {});
@@ -178,6 +180,7 @@ async function refreshDelivery(orderId) {
   if (order.supplierDeliveryPending && !delivery.supplierDeliveryPending && order.paidAt) {
     console.log(`Proxies delivered for order ${order._id} ${Math.round((Date.now() - new Date(order.paidAt).getTime()) / 1000)}s after payment.`);
   }
+  if (order.supplierDeliveryPending && !delivery.supplierDeliveryPending) notifyProxiesReady(order._id);
 }
 
 // ----- Admin endpoints -----

@@ -4,6 +4,7 @@ import { confirmZinipayPayment, createZinipayInvoice } from "../controllers/zini
 import { confirmCryptomusPayment, createCryptomusInvoice } from "../controllers/cryptomus.controller.js";
 import { listProxyStore } from "../controllers/supplier.controller.js";
 import { confirmTopup, createTopup, getWallet, payWithWallet } from "../controllers/wallet.controller.js";
+import { listNotifications, markNotificationsRead } from "../lib/realtime.js";
 import { addProductReview, completeDemoPayment, createOrder, createStripeCheckout, listMyOrders, listProductReviews, listProducts, paymentMode, toggleProductReviewLike } from "../controllers/store.controller.js";
 
 const router = Router();
@@ -26,4 +27,11 @@ router.post("/payments/wallet/create", requireAuth, payWithWallet);
 router.get("/wallet", requireAuth, getWallet);
 router.post("/wallet/topups", requireAuth, createTopup);
 router.post("/wallet/topups/:id/confirm", requireAuth, confirmTopup);
+// Notification bell: latest 20 and the unread count; opening the bell marks them read.
+router.get("/notifications", requireAuth, async (req, res, next) => {
+  try { res.json(await listNotifications(req.user.id)); } catch (error) { next(error); }
+});
+router.post("/notifications/read", requireAuth, async (req, res, next) => {
+  try { await markNotificationsRead(req.user.id); res.json({ ok: true }); } catch (error) { next(error); }
+});
 export default router;

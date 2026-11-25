@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { useCurrencyPreference } from "@/lib/currency-preference";
 import { DEFAULT_SERVICE_FEE_PERCENT, withServiceFee } from "@/lib/service-fee";
 import { Icon } from "@/components/ui/icons";
+import { readCart, writeCart } from "@/lib/cart-store";
 
 // Proxy store: type → plan → country → area → provider → buy.
 // Data comes from /api/proxies (selling prices only; a price of 0 means "contact admin").
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-const cartKey = "ipdokan-cart-v1";
 const contactUrl = "https://t.me/IpDokan";
 const PLANS_SHOWN = 6;
 
@@ -121,9 +121,7 @@ export function ProxyStore() {
     if (!(unitPrice > 0)) return setNotice("The price for this plan is not set yet. Please contact admin.");
     if (provider.stock < ipsNeeded) return setNotice(`Only ${provider.stock} IP(s) are left here. Lower the quantity or pick another provider.`);
     const line = { productId: type.productId, variantId: plan.id, locationId: provider.locationId };
-    let cart = [];
-    try { cart = JSON.parse(window.localStorage.getItem(cartKey) || "[]"); } catch { cart = []; }
-    if (!Array.isArray(cart)) cart = [];
+    const cart = readCart();
     const same = (item) => item.productId === line.productId && (item.variantId || "") === line.variantId && (item.locationId || "") === line.locationId;
     const existing = cart.find(same);
     const nextQuantity = (existing?.quantity || 0) + quantity;
@@ -132,7 +130,7 @@ export function ProxyStore() {
     const nextCart = existing
       ? cart.map((item) => same(item) ? { ...item, quantity: nextQuantity } : item)
       : [...cart, { ...line, variantName: `${plan.name} · ${locationLabel}`, name: type.name, codeNumber: type.codeNumber || "", imageUrl: "", price: unitPrice, currency, available: maxQuantity, quantity }];
-    try { window.localStorage.setItem(cartKey, JSON.stringify(nextCart)); }
+    try { writeCart(nextCart); }
     catch { return setNotice("Your browser blocked the cart. Allow site storage and try again."); }
     if (goToCheckout) { router.push("/checkout"); return; }
     setNotice(`${planTitle(plan, type)} (${locationLabel}) added to your cart.`);

@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { config } from "../config/env.js";
 import { Wallet, WalletTransaction } from "../models/wallet.model.js";
 import { Order } from "../models/order.model.js";
+import { notifyWalletRefund, notifyWalletTopup } from "./order-notifications.js";
 
 export class WalletError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
@@ -38,7 +39,8 @@ async function inTransaction(work) {
 // Marks a pending top-up as completed and adds it to the balance, both or neither. Calling it again for
 // the same top-up (webhook + return page) does nothing, so a payment is never credited twice.
 export async function completeTopup(transactionId, gatewayFields = {}) {
-  return inTransaction(async (session) => {
+  let completed = null;
+  const wallet = await inTransaction(async (session) => {
     const transaction = await WalletTransaction.findOneAndUpdate(
       { _id: transactionId, type: "topup", status: "pending" },
       { $set: { status: "completed", completedAt: new Date(), ...gatewayFields } },
@@ -52,8 +54,12 @@ export async function completeTopup(transactionId, gatewayFields = {}) {
     );
     await WalletTransaction.updateOne({ _id: transaction._id }, { $set: { balanceAfterCents: wallet.balanceCents } }, { session });
     console.log(`Wallet top-up ${transaction._id} completed: +$${fromCents(transaction.amountCents)} for user ${transaction.userId}, balance $${fromCents(wallet.balanceCents)}.`);
+    completed = transaction;
     return wallet;
   });
+  // Sent after the database transaction commits, so a retried transaction never notifies twice.
+  if (completed && wallet) notifyWalletTopup(completed, wallet.balanceCents);
+  return wallet;
 }
 
 export async function failTopup(transactionId, note) {
@@ -63,11 +69,13 @@ export async function failTopup(transactionId, note) {
 // Puts money back into the wallet, for example when an order paid from it could not be delivered.
 export async function refundToWallet(userId, amountCents, orderIds, note) {
   if (!(amountCents > 0)) return null;
-  return inTransaction(async (session) => {
-    const wallet = await Wallet.findOneAndUpdate({ userId }, { $inc: { balanceCents: amountCents } }, { session, upsert: true, returnDocument: "after", setDefaultsOnInsert: true });
-    await WalletTransaction.create([{ userId, type: "refund", status: "completed", method: "wallet", amountCents, balanceAfterCents: wallet.balanceCents, orderIds, note, completedAt: new Date() }], { session });
-    return wallet;
+  const wallet = await inTransaction(async (session) => {
+    const updated = await Wallet.findOneAndUpdate({ userId }, { $inc: { balanceCents: amountCents } }, { session, upsert: true, returnDocument: "after", setDefaultsOnInsert: true });
+    await WalletTransaction.create([{ userId, type: "refund", status: "completed", method: "wallet", amountCents, balanceAfterCents: updated.balanceCents, orderIds, note, completedAt: new Date() }], { session });
+    return updated;
   });
+  if (wallet) notifyWalletRefund(userId, amountCents, wallet.balanceCents);
+  return wallet;
 }
 
 // Pays pending USD orders from the wallet. The orders are claimed and the balance is charged in one

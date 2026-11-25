@@ -799,9 +799,36 @@ html[data-theme="dark"] .iphone-button {
 html[data-theme="dark"] .iphone-camera-control {
     background: linear-gradient(90deg, #6d7078, #a7aab2)
 }
+html[data-theme="dark"] .cart-count {
+    background: #ef4444
+}
+html[data-theme="dark"] .notify-button {
+    background: transparent
+}
+html[data-theme="dark"] .notify-button:hover {
+    background: rgb(255 255 255 / 8%)
+}
+html[data-theme="dark"] .notify-badge {
+    background: #ef4444
+}
+html[data-theme="dark"] .notify-panel {
+    background: rgb(40 42 46)
+}
+html[data-theme="dark"] .notify-list a:hover {
+    background: rgb(255 255 255 / 6%)
+}
+html[data-theme="dark"] .notify-list li.is-unread a {
+    background: rgb(57 119 255 / 12%)
+}
+html[data-theme="dark"] .notify-toast {
+    background: rgb(40 42 46)
+}
 
 html[data-theme="dark"] {
   --background: #1f2125;
   --surface: #272a30;
 }
-html[data-theme="dark"] .site-header { background: #232529; }
+/* Nav: solid black at the top of the page, the site's ash grey once the page is scrolled
+   (components/layout/site-header.jsx adds .is-scrolled). */
+html[data-theme="dark"] .site-header { background: #000; transition: background-color .3s ease; }
+html[data-theme="dark"] .site-header.is-scrolled { background: #232529; }

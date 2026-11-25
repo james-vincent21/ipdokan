@@ -63,6 +63,9 @@ const services = [
   },
 ];
 
+// Popular products open the same page as the nav does for their category (proxy store or category list).
+const popularProductHref = (product) => (product.proxyType ? productHref(product) : product.category ? categoryHref(product.category) : productHref(product));
+
 export function ServiceCatalog() {
   const [products, setProducts] = useState([]);
   const [currency] = useCurrencyPreference();
@@ -110,7 +113,7 @@ export function ServiceCatalog() {
               // API products: lowest price that is set (0 = not priced yet).
               const setPrices = product.instantDelivery ? variants.map((variant) => Number(currency === "BDT" ? variant.priceBdt : variant.priceUsd) || 0).filter((price) => price > 0) : [];
               return (
-              <a className="popular-product-card" href={product.proxyType ? productHref(product) : product.brand ? `/catalog?brand=${encodeURIComponent(product.brand)}` : productHref(product)} key={product.id}>
+              <a className="popular-product-card" href={popularProductHref(product)} key={product.id}>
                 <span className={`popular-product-art ${product.style || "vless"}`} aria-hidden="true">
                   {product.imageUrl ? <img src={product.imageUrl} alt="" /> : <span className="product-stage"><span>{product.name?.trim()?.charAt(0).toUpperCase() || "P"}</span></span>}
                 </span>
