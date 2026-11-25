@@ -19,6 +19,7 @@ function describe(transaction) {
   if (transaction.type === "topup") return { title: transaction.bonusUsd > 0 ? "Recharge + bonus" : "Recharge", detail: `Paid ${money(transaction.paidAmount, transaction.paidCurrency)} via ${METHOD_LABEL[transaction.method] || transaction.method}${transaction.paidCurrency === "BDT" ? ` · 1 USD = ৳${transaction.bdtPerUsd}` : ""}${transaction.bonusUsd > 0 ? ` · includes ${money(transaction.bonusUsd, "USD")} bonus` : ""}` };
   if (transaction.type === "purchase") return { title: "Purchase", detail: `${transaction.orderCount} order${transaction.orderCount === 1 ? "" : "s"} paid from wallet` };
   if (transaction.type === "credit") return { title: "Credit from IP DOKAN", detail: transaction.note || "Added to your wallet by the store" };
+  if (transaction.type === "debit") return { title: "Credit taken back", detail: transaction.note || "Taken back by the store" };
   return { title: "Refund", detail: transaction.note || "Returned to your wallet" };
 }
 

@@ -11,6 +11,7 @@ import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "./auth.js";
 import { config } from "../config/env.js";
 import { AdminEmail } from "../models/admin-email.model.js";
+import mongoose from "mongoose";
 import { Cart, Notification } from "../models/notification.model.js";
 import { createRedis, redisEnabled } from "./redis.js";
 
@@ -109,12 +110,26 @@ export function disconnectUser(userId) {
   try { target()?.in(`user:${userId}`).disconnectSockets(true); } catch (error) { console.error("Could not disconnect user:", error.message); }
 }
 
-export async function listNotifications(userId) {
+// Newest first. `before` (a date) loads the next page; `unreadOnly` lists only unread ones.
+export async function listNotifications(userId, { before, limit = 20, unreadOnly = false } = {}) {
+  const size = Math.min(Math.max(Number(limit) || 20, 1), 50);
+  const filter = { userId };
+  if (unreadOnly) filter.read = false;
+  const beforeDate = before ? new Date(before) : null;
+  if (beforeDate && !Number.isNaN(beforeDate.getTime())) filter.createdAt = { $lt: beforeDate };
   const [items, unread] = await Promise.all([
-    Notification.find({ userId }).sort({ createdAt: -1 }).limit(20).lean(),
+    Notification.find(filter).sort({ createdAt: -1 }).limit(size + 1).lean(),
     Notification.countDocuments({ userId, read: false }),
   ]);
-  return { notifications: items.map(publicNotification), unread };
+  return { notifications: items.slice(0, size).map(publicNotification), unread, hasMore: items.length > size };
+}
+
+// Marks one notification read or unread. Returns the new unread count, or null if it is not the user's.
+export async function setNotificationRead(userId, id, read) {
+  if (!mongoose.isValidObjectId(id)) return null;
+  const updated = await Notification.findOneAndUpdate({ _id: id, userId }, { $set: { read: Boolean(read) } });
+  if (!updated) return null;
+  return Notification.countDocuments({ userId, read: false });
 }
 
 export async function markNotificationsRead(userId) {

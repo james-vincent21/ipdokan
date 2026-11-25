@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { authClient } from "@/lib/auth-client";
+import { WalletBalance } from "./wallet-balance";
 import { clearAdminDashboardCache } from "@/lib/admin-dashboard-cache";
 import { useCurrencyPreference } from "@/lib/currency-preference";
 import { Icon } from "@/components/ui/icons";
@@ -309,7 +310,7 @@ export function SiteHeader() {
           {isAdmin && <a className="nav-link" data-nav-key="admin" href="/admin" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="dashboard" /></span>Admin dashboard</a>}
           <div className="nav-actions">
             {/* Wallet and cart sit on the right, next to the account controls. */}
-            <a className="nav-link nav-action-link wallet-nav-link" data-nav-key="wallet" href="/wallet" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="wallet" /></span>Wallet</a>
+            <a className="nav-link nav-action-link wallet-nav-link" data-nav-key="wallet" href="/wallet" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="wallet" /></span>Wallet<WalletBalance signedIn={Boolean(session?.user)} currency={currency} /></a>
             <a className="nav-link nav-action-link cart-nav-link" data-nav-key="cart" href="/checkout" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="cart" />{itemsInCart > 0 && <span className="cart-count" aria-label={`${itemsInCart} in cart`}>{itemsInCart > 99 ? "99+" : itemsInCart}</span>}</span>Cart</a>
             <ThemeToggle />
             <div className="nav-currency-toggle" aria-label="Choose display currency"><button type="button" className={currency === "USD" ? "is-selected" : ""} aria-pressed={currency === "USD"} onClick={() => setCurrency("USD")}>USD</button><button type="button" className={currency === "BDT" ? "is-selected" : ""} aria-pressed={currency === "BDT"} onClick={() => setCurrency("BDT")}>BDT</button></div>

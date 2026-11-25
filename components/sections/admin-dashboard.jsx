@@ -6,6 +6,7 @@ import { adminDashboardCache, clearAdminDashboardCache, setAdminDashboardCache }
 import { downloadInvoicePdf } from "@/lib/invoice-download";
 import { SupplierImport, SupplierOrderActions, SupplierPlanBrowser, SupplierVariantEditor, emptySupplierVariant, useSupplierLocations } from "./admin-supplier";
 import { AdminWalletCredit } from "./admin-wallet-credit";
+import { AdminDevMode } from "./admin-dev-mode";
 import { OrderFilterBar, buildRevenueChart, defaultOrderFilter, filterOrders, isFilterActive, summarizeOrders, variantOptions } from "./admin-order-filter";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
@@ -253,7 +254,7 @@ export function AdminDashboard() {
       {error && <p className="admin-notice is-error" role="alert">{error}{error.includes("Admin access is not configured") && <span> Add this account email to ADMIN_EMAILS in the backend environment, then restart the API.</span>}</p>}
       {message && <p className="admin-notice" role="status">{message}</p>}
       {loading ? <p className="admin-loading">Loading admin data…</p> : error && !data.stats ? <p className="admin-loading">Sign in with an authorized admin account to continue.</p> : <>
-        {tab === "Overview" && <>
+        {tab === "Overview" && <><AdminDevMode api={api} />
           {filterBar}
           <section className="admin-stat-grid">{[["Orders", orderSummary.orders], ["Units sold", orderSummary.paidUnits], ["Revenue (USD)", `$${orderSummary.revenue.USD.toFixed(2)}`], ["Revenue (BDT)", `৳${orderSummary.revenue.BDT.toFixed(2)}`]].map(([label, value]) => <article className="admin-stat" key={label}><span>{label}</span><strong>{value}</strong></article>)}</section>
           <p className="admin-filter-note">{data.stats.products ?? 0} products · {data.stats.users ?? 0} users · {orderSummary.pending} pending order(s) in this view</p>

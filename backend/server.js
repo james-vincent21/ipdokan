@@ -5,6 +5,8 @@ async function startServer() {
   if (config.authEnabled) {
     await connectDatabase();
     console.log("MongoDB connected. Authentication is enabled.");
+    const { dropNotificationExpiry } = await import("./models/notification.model.js");
+    await dropNotificationExpiry();
   } else {
     console.log("Authentication is disabled. Configure credentials and set AUTH_ENABLED=true to enable it.");
   }

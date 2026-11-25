@@ -11,7 +11,7 @@ import { AdminEmail } from "../models/admin-email.model.js";
 import { Wallet } from "../models/wallet.model.js";
 import { Cart, Notification } from "../models/notification.model.js";
 import { disconnectUser } from "../lib/realtime.js";
-import { WalletError, creditWallet, topupCreditCents } from "../lib/wallet.js";
+import { WalletError, creditWallet, debitWallet, topupCreditCents } from "../lib/wallet.js";
 
 const users = () => mongoose.connection.collection("user");
 const toObjectId = (id) => (mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(String(id)) : null);
@@ -96,18 +96,52 @@ export async function lookupUser(req, res, next) {
   } catch (error) { next(error); }
 }
 
+// Reads { amount, currency, note } for a credit or a take-back. BDT is converted to USD like a top-up.
+function walletAmountInput(req) {
+  const currency = req.body?.currency === "BDT" ? "BDT" : "USD";
+  const amount = Number(req.body?.amount);
+  if (!Number.isFinite(amount) || amount <= 0) return { error: "Enter an amount more than zero." };
+  if (amount > (currency === "BDT" ? 1_000_000 : 10_000)) return { error: "That amount is too large for one change." };
+  const amountCents = topupCreditCents(amount, currency);
+  if (!(amountCents > 0)) return { error: "The amount is less than one cent after conversion." };
+  const note = typeof req.body?.note === "string" ? req.body.note.trim().slice(0, 200) : "";
+  return { amountCents, options: { note, adminEmail: String(req.user.email || "").toLowerCase(), paidAmount: amount, paidCurrency: currency, bdtPerUsd: currency === "BDT" ? config.wallet.bdtPerUsd : 0 } };
+}
+
 export async function creditUserWallet(req, res, next) {
   try {
     const { user, status, error } = await findVerifiedUser(req.params.id);
     if (!user) return res.status(status).json({ error });
-    const currency = req.body?.currency === "BDT" ? "BDT" : "USD";
-    const amount = Number(req.body?.amount);
-    if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: "Enter an amount more than zero." });
-    if (amount > (currency === "BDT" ? 1_000_000 : 10_000)) return res.status(400).json({ error: "That amount is too large for one credit." });
-    const note = typeof req.body?.note === "string" ? req.body.note.trim().slice(0, 200) : "";
-    const amountCents = topupCreditCents(amount, currency);
-    if (!(amountCents > 0)) return res.status(400).json({ error: "The amount is less than one cent after conversion." });
-    const { wallet } = await creditWallet(String(user._id), amountCents, { note, adminEmail: String(req.user.email || "").toLowerCase(), paidAmount: amount, paidCurrency: currency, bdtPerUsd: currency === "BDT" ? config.wallet.bdtPerUsd : 0 });
-    res.json({ creditedUsd: amountCents / 100, walletBalanceUsd: wallet.balanceCents / 100 });
+    const input = walletAmountInput(req);
+    if (input.error) return res.status(400).json({ error: input.error });
+    const { wallet } = await creditWallet(String(user._id), input.amountCents, input.options);
+    res.json({ creditedUsd: input.amountCents / 100, walletBalanceUsd: wallet.balanceCents / 100 });
   } catch (error) { if (error instanceof WalletError) return res.status(error.status).json({ error: error.message }); next(error); }
+}
+
+// Takes credit back, for example a credit added by mistake. The balance never goes below zero.
+export async function debitUserWallet(req, res, next) {
+  try {
+    const { user, status, error } = await findVerifiedUser(req.params.id);
+    if (!user) return res.status(status).json({ error });
+    const input = walletAmountInput(req);
+    if (input.error) return res.status(400).json({ error: input.error });
+    const { wallet } = await debitWallet(String(user._id), input.amountCents, input.options);
+    res.json({ debitedUsd: input.amountCents / 100, walletBalanceUsd: wallet.balanceCents / 100 });
+  } catch (error) { if (error instanceof WalletError) return res.status(error.status).json({ error: error.message }); next(error); }
+}
+
+// Finds verified users by user id, or by part of their name or email. At most 10 results.
+export async function searchUsers(req, res, next) {
+  try {
+    const query = String(req.query.q || "").trim().slice(0, 100);
+    if (query.length < 2) return res.status(400).json({ error: "Type at least 2 characters." });
+    const projection = { name: 1, email: 1, image: 1, phone: 1, emailVerified: 1, banned: 1, createdAt: 1 };
+    const _id = toObjectId(query);
+    const pattern = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    const found = await users().find({ emailVerified: true, $or: [...(_id ? [{ _id }] : []), { name: pattern }, { email: pattern }] }, { projection }).sort({ createdAt: -1 }).limit(10).toArray();
+    const wallets = await Wallet.find({ userId: { $in: found.map((user) => String(user._id)) } }, { userId: 1, balanceCents: 1 }).lean();
+    const balance = new Map(wallets.map((wallet) => [wallet.userId, wallet.balanceCents]));
+    res.json({ users: found.map((user) => ({ id: String(user._id), name: user.name || "", email: user.email || "", phone: user.phone || "", banned: Boolean(user.banned), walletBalanceUsd: (balance.get(String(user._id)) || 0) / 100 })) });
+  } catch (error) { next(error); }
 }

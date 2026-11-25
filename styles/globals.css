@@ -1473,3 +1473,73 @@ html.pl-done #site-preloader { visibility: hidden; opacity: 0; pointer-events: n
 .admin-credit-user > div { display: grid; gap: 3px; }
 .admin-credit-user span, .admin-credit-user small { color: #96a2b5; font-size: 12px; }
 .admin-credit-form { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); align-items: end; }
+
+/* Wallet balance next to "Wallet" in the header */
+.wallet-nav-balance { margin-left: 6px; border-radius: 999px; background: rgb(57 120 239 / 16%); padding: 2px 8px; color: #8fb4ff; font-size: 11px; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
+html[data-theme="light"] .wallet-nav-balance { background: #e8f0ff; color: #1d4fd7; }
+
+/* Notification bell: header row, read toggles, sound, link to history */
+.notify-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.notify-head .notify-title { margin: 2px 4px; }
+.notify-title small { color: #8fb4ff; font-size: 11px; font-weight: 600; }
+.notify-icon-button { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: #c1cada; cursor: pointer; }
+.notify-icon-button svg { width: 17px; height: 17px; }
+.notify-icon-button[aria-pressed="false"] { color: #7d8799; }
+.notify-link-button { margin: 0 4px 8px; border: 0; background: none; padding: 0; color: #8fb4ff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.notify-list li { position: relative; }
+.notify-list li a { padding-right: 34px; }
+.notify-read-toggle { position: absolute; top: 8px; right: 6px; display: grid; width: 24px; height: 24px; place-items: center; border: 0; border-radius: 6px; background: transparent; cursor: pointer; }
+.notify-read-toggle:hover { background: rgb(255 255 255 / 8%); }
+.notify-dot { width: 9px; height: 9px; border-radius: 50%; background: #3977ff; }
+.notify-dot.is-hollow { border: 1.5px solid #5e6879; background: transparent; }
+.notify-all-link { display: block; margin-top: 8px; border-top: 1px solid var(--line); padding: 10px 4px 2px; color: #8fb4ff; font-size: 12.5px; font-weight: 700; text-align: center; text-decoration: none; }
+
+/* /notifications page */
+.notifications-heading { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 16px; }
+.notifications-heading h1 { margin: 4px 0; }
+.notifications-heading p { margin: 0; color: #96a2b5; }
+.notifications-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.notifications-sound { display: inline-flex; align-items: center; gap: 6px; }
+.notifications-sound svg { width: 16px; height: 16px; }
+.notifications-filter { display: flex; width: fit-content; margin-bottom: 14px; border: 1px solid var(--line); border-radius: 9px; padding: 3px; }
+.notifications-filter button { min-width: 80px; min-height: 32px; border: 0; border-radius: 6px; background: transparent; color: #9da8bb; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+.notifications-filter button.is-selected { background: #3978ef; color: #fff; }
+.notifications-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.notifications-list li { display: flex; align-items: flex-start; gap: 10px; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.notifications-list li.is-unread { border-color: rgb(57 119 255 / 45%); background: rgb(57 119 255 / 9%); }
+.notifications-list a { display: grid; flex: 1; gap: 3px; min-width: 0; color: inherit; text-decoration: none; }
+.notifications-list b { font-size: 14px; }
+.notifications-list span { color: #a4adbf; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.notifications-list time { color: #7d8799; font-size: 11.5px; }
+.notifications-read-toggle { flex: 0 0 auto; border: 1px solid var(--line); border-radius: 8px; background: transparent; padding: 5px 9px; color: #8fb4ff; font: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.notifications-more { display: block; margin: 14px auto 0; }
+html[data-theme="light"] .notifications-list span { color: #4b5563; }
+html[data-theme="light"] .notifications-heading p, html[data-theme="light"] .notifications-list time { color: #6b7280; }
+html[data-theme="light"] .notifications-list li.is-unread { background: #eef4ff; }
+html[data-theme="light"] .notifications-read-toggle, html[data-theme="light"] .notify-link-button { color: #1d4fd7; }
+html[data-theme="light"] .notifications-filter button { color: #4b5563; }
+html[data-theme="light"] .notifications-filter button.is-selected { color: #fff; }
+
+/* Admin wallet credit: search results and add / take back */
+.admin-credit-results { display: grid; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+.admin-credit-results button { display: grid; width: 100%; gap: 2px; border: 1px solid var(--line); border-radius: 9px; background: transparent; padding: 9px 12px; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.admin-credit-results button:hover { background: rgb(255 255 255 / 5%); }
+.admin-credit-results small { color: #96a2b5; font-size: 11.5px; }
+.admin-credit-mode { display: flex; width: fit-content; border: 1px solid var(--line); border-radius: 9px; padding: 3px; }
+.admin-credit-mode button { min-height: 32px; border: 0; border-radius: 6px; background: transparent; padding: 0 14px; color: #9da8bb; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+.admin-credit-mode button.is-selected { background: #3978ef; color: #fff; }
+.admin-credit-mode button.is-selected.is-debit { background: #dc2626; }
+
+/* Dev mode banner (admin panel > Overview > Dev mode) */
+.dev-mode-banner { position: relative; z-index: 6; display: flex; align-items: center; justify-content: center; gap: 14px; background: repeating-linear-gradient(135deg, #f59e0b 0 22px, #fbbf24 22px 44px); padding: 14px 20px; color: #1c1300; text-align: left; box-shadow: 0 6px 18px rgb(0 0 0 / 25%); }
+.dev-mode-banner > div { display: grid; gap: 2px; }
+.dev-mode-banner strong { font-size: clamp(18px, 3.2vw, 28px); font-weight: 900; letter-spacing: -.01em; line-height: 1.15; text-transform: uppercase; }
+.dev-mode-banner span { font-size: clamp(13px, 1.8vw, 15px); font-weight: 700; }
+.dev-mode-banner small { font-size: 13px; font-weight: 600; }
+.dev-mode-icon { display: grid; flex: 0 0 auto; width: 46px; height: 46px; place-items: center; border-radius: 50%; background: #1c1300; color: #fbbf24; }
+.dev-mode-icon svg { width: 24px; height: 24px; }
+@media (max-width: 600px) { .dev-mode-banner { padding: 12px 14px; } .dev-mode-icon { width: 38px; height: 38px; } }
+.admin-dev-mode.is-on { border-color: rgb(245 158 11 / 60%); }
+.admin-dev-mode-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.admin-dev-mode-head h2 { display: flex; align-items: center; gap: 8px; }
+.admin-dev-mode-head p { margin: 0; max-width: 640px; }

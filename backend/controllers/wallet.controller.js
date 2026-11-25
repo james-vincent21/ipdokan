@@ -42,6 +42,14 @@ export async function getWallet(req, res, next) {
   } catch (error) { next(error); }
 }
 
+// Balance only, for the header next to "Wallet".
+export async function getWalletBalance(req, res, next) {
+  try {
+    const balanceUsd = fromCents(await walletBalanceCents(req.user.id));
+    res.json({ balanceUsd, balanceBdt: Math.round(balanceUsd * config.wallet.bdtPerUsd * 100) / 100 });
+  } catch (error) { next(error); }
+}
+
 // Starts a top-up: the customer pays `amount` in `currency` and the USD value is added after payment.
 export async function createTopup(req, res, next) {
   try {

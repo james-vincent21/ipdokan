@@ -38,3 +38,7 @@ export function notifyWalletRefund(userId, amountCents, balanceCents) {
 export function notifyWalletCredit(userId, amountCents, balanceCents, note) {
   notifyUser(userId, { type: "wallet-credit", title: "Credit added to your wallet", message: `+$${(amountCents / 100).toFixed(2)}${note ? ` · ${note}` : ""}. Balance: $${(balanceCents / 100).toFixed(2)}.`, link: "/wallet" });
 }
+
+export function notifyWalletDebit(userId, amountCents, balanceCents, note) {
+  notifyUser(userId, { type: "wallet-debit", title: "Credit taken back from your wallet", message: `-$${(amountCents / 100).toFixed(2)}${note ? ` · ${note}` : ""}. Balance: $${(balanceCents / 100).toFixed(2)}.`, link: "/wallet" });
+}

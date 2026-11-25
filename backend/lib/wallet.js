@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { config } from "../config/env.js";
 import { Wallet, WalletTransaction } from "../models/wallet.model.js";
 import { Order } from "../models/order.model.js";
-import { notifyWalletCredit, notifyWalletRefund, notifyWalletTopup } from "./order-notifications.js";
+import { notifyWalletCredit, notifyWalletDebit, notifyWalletRefund, notifyWalletTopup } from "./order-notifications.js";
 
 export class WalletError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
@@ -87,6 +87,22 @@ export async function creditWallet(userId, amountCents, { note = "", adminEmail 
     return { wallet, transaction };
   });
   notifyWalletCredit(userId, amountCents, result.wallet.balanceCents, note);
+  return result;
+}
+
+// Money an admin takes back from a customer's wallet. Only what is in the balance can be taken.
+export async function debitWallet(userId, amountCents, { note = "", adminEmail = "", paidAmount = 0, paidCurrency = "USD", bdtPerUsd = 0 } = {}) {
+  if (!(amountCents > 0)) throw new WalletError("Amount must be more than zero.");
+  const result = await inTransaction(async (session) => {
+    const wallet = await Wallet.findOneAndUpdate({ userId, balanceCents: { $gte: amountCents } }, { $inc: { balanceCents: -amountCents } }, { session, returnDocument: "after" });
+    if (!wallet) {
+      const current = await Wallet.findOne({ userId }, { balanceCents: 1 }, { session }).lean();
+      throw new WalletError(`The wallet has only $${((current?.balanceCents || 0) / 100).toFixed(2)}. You cannot take back more than that.`, 409);
+    }
+    const [transaction] = await WalletTransaction.create([{ userId, type: "debit", status: "completed", method: "admin", amountCents: -amountCents, balanceAfterCents: wallet.balanceCents, paidAmount, paidCurrency, bdtPerUsd, note: String(note).slice(0, 300), adminEmail, completedAt: new Date() }], { session });
+    return { wallet, transaction };
+  });
+  notifyWalletDebit(userId, amountCents, result.wallet.balanceCents, note);
   return result;
 }
 
