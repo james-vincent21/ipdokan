@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
-const QUICK_AMOUNTS = { USD: [10, 25, 50, 100], BDT: [1000, 2500, 5000, 10000] };
+const QUICK_AMOUNTS = { USD: [5, 10, 40, 100], BDT: [500, 1000, 5000, 10000] };
 const METHOD_LABEL = { zinipay: "ZiniPay", cryptomus: "Cryptomus", wallet: "Wallet" };
 
 function money(amount, currency) {
@@ -16,7 +16,7 @@ function money(amount, currency) {
 const bdtToUsd = (bdt, rate) => Math.floor((Number(bdt) / rate) * 100 + 1e-9) / 100;
 
 function describe(transaction) {
-  if (transaction.type === "topup") return { title: "Recharge", detail: `Paid ${money(transaction.paidAmount, transaction.paidCurrency)} via ${METHOD_LABEL[transaction.method] || transaction.method}${transaction.paidCurrency === "BDT" ? ` · 1 USD = ৳${transaction.bdtPerUsd}` : ""}` };
+  if (transaction.type === "topup") return { title: transaction.bonusUsd > 0 ? "Recharge + bonus" : "Recharge", detail: `Paid ${money(transaction.paidAmount, transaction.paidCurrency)} via ${METHOD_LABEL[transaction.method] || transaction.method}${transaction.paidCurrency === "BDT" ? ` · 1 USD = ৳${transaction.bdtPerUsd}` : ""}${transaction.bonusUsd > 0 ? ` · includes ${money(transaction.bonusUsd, "USD")} bonus` : ""}` };
   if (transaction.type === "purchase") return { title: "Purchase", detail: `${transaction.orderCount} order${transaction.orderCount === 1 ? "" : "s"} paid from wallet` };
   return { title: "Refund", detail: transaction.note || "Returned to your wallet" };
 }
@@ -80,10 +80,14 @@ export function WalletPage() {
   }, [fetchWallet]);
 
   const rate = wallet?.bdtPerUsd || 135;
-  const min = wallet?.minTopup?.[currency] ?? (currency === "BDT" ? 1000 : 10);
+  const min = wallet?.minTopup?.[currency] ?? (currency === "BDT" ? 100 : 0.75);
   const max = wallet?.maxTopup?.[currency] ?? (currency === "BDT" ? 500000 : 5000);
   const value = Number(amount);
   const creditUsd = currency === "BDT" ? bdtToUsd(value, rate) : value;
+  // Same rule as the server: recharges at or above the threshold get `percent` extra, rounded down to the cent.
+  const bonusRule = wallet?.bonus;
+  const bonusUsd = bonusRule?.percent > 0 && value + 1e-9 >= bonusRule.threshold[currency] ? Math.floor(Math.round(creditUsd * 100) * bonusRule.percent / 100 + 1e-9) / 100 : 0;
+  const totalUsd = Math.round((creditUsd + bonusUsd) * 100) / 100;
   const methodReady = Boolean(wallet?.methods?.[currency]);
   const amountError = !amount ? "Enter an amount." : !Number.isFinite(value) ? "Enter a number." : value < min ? `Minimum ${money(min, currency)}.` : value > max ? `Maximum ${money(max, currency)} at a time.` : currency === "BDT" && !Number.isInteger(value) ? "Enter whole taka." : "";
 
@@ -131,14 +135,19 @@ export function WalletPage() {
               <div><b aria-hidden="true">{currency === "BDT" ? "৳" : "$"}</b><input type="number" inputMode="decimal" min={min} max={max} step={currency === "BDT" ? 1 : 0.01} value={amount} onChange={(event) => { setAmount(event.target.value); setError(""); }} /></div>
             </label>
             <div className="wallet-quick">{QUICK_AMOUNTS[currency].map((quick) => <button type="button" key={quick} className={value === quick ? "is-selected" : ""} onClick={() => { setAmount(String(quick)); setError(""); }}>{money(quick, currency)}</button>)}</div>
+            {bonusRule?.percent > 0 && <p className={`wallet-bonus-banner${bonusUsd > 0 ? " is-active" : ""}`}>🎁 {bonusUsd > 0 ? `You get ${bonusRule.percent}% extra on this recharge!` : `Recharge ${money(bonusRule.threshold.BDT, "BDT")} (${money(bonusRule.threshold.USD, "USD")}) or more and get ${bonusRule.percent}% extra in your wallet.`}</p>}
             <div className="wallet-preview" aria-live="polite">
               <p><span>You pay</span><strong>{amountError ? "—" : money(value, currency)}</strong></p>
-              <p><span>Added to your wallet</span><strong className="wallet-credit">{amountError ? "—" : money(creditUsd, "USD")}</strong></p>
+              {bonusUsd > 0 && !amountError && <>
+                <p><span>Recharge value</span><strong>{money(creditUsd, "USD")}</strong></p>
+                <p className="wallet-bonus-line"><span>Bonus ({bonusRule.percent}% extra)</span><strong>+{money(bonusUsd, "USD")}</strong></p>
+              </>}
+              <p><span>Added to your wallet</span><strong className="wallet-credit">{amountError ? "—" : money(totalUsd, "USD")}</strong></p>
               {!amountError && <small>{currency === "BDT" ? `${money(value, "BDT")} ÷ ${rate} = ${money(creditUsd, "USD")}` : `≈ ${money(Math.round(value * rate * 100) / 100, "BDT")} at 1 USD = ৳${rate}`}</small>}
             </div>
             {(error || amountError) && <p className="admin-image-error" role="alert">{error || amountError}</p>}
             <button className="auth-submit" type="submit" disabled={busy || Boolean(amountError) || !methodReady}>{!methodReady ? `${currency} recharge is not available right now` : busy ? "Taking you to the payment page…" : `Recharge with ${currency === "BDT" ? "ZiniPay" : "Cryptomus"}`}</button>
-            <p className="wallet-fine-print">Minimum {money(min, currency)}. No fee on recharge; the {currency === "BDT" ? "taka" : "dollar"} amount you pay is added in USD. The 5% service fee applies when you buy.</p>
+            <p className="wallet-fine-print">Minimum {money(wallet.minTopup.BDT, "BDT")} ({money(wallet.minTopup.USD, "USD")}). No fee on recharge; the {currency === "BDT" ? "taka" : "dollar"} amount you pay is added in USD{bonusRule?.percent > 0 ? `, plus ${bonusRule.percent}% extra from ${money(bonusRule.threshold.BDT, "BDT")} (${money(bonusRule.threshold.USD, "USD")})` : ""}. The 5% service fee applies when you buy.</p>
           </form>
         </section>
 

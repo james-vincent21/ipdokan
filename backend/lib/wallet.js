@@ -15,6 +15,12 @@ export function topupCreditCents(amount, currency, bdtPerUsd = config.wallet.bdt
   return currency === "BDT" ? Math.floor((Number(amount) / bdtPerUsd) * 100 + 1e-9) : toCents(amount);
 }
 
+// Bonus for a recharge: `percent` of the credited amount when the recharge reaches the threshold.
+export function topupBonusCents(amount, currency, creditCents, bonus = config.wallet.bonus) {
+  if (!(bonus.percent > 0) || !(Number(amount) + 1e-9 >= bonus.threshold[currency])) return 0;
+  return Math.floor((creditCents * bonus.percent) / 100 + 1e-9);
+}
+
 export async function walletBalanceCents(userId) {
   const wallet = await Wallet.findOne({ userId }, { balanceCents: 1 }).lean();
   return wallet?.balanceCents || 0;

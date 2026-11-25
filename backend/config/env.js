@@ -36,6 +36,18 @@ if (!Number.isFinite(serviceFeePercent) || serviceFeePercent < 0 || serviceFeePe
 // Wallet: one balance in USD. BDT top-ups are converted at this rate (taka per 1 USD).
 const walletBdtPerUsd = process.env.WALLET_BDT_PER_USD === undefined || process.env.WALLET_BDT_PER_USD === "" ? 135 : Number(process.env.WALLET_BDT_PER_USD);
 if (!Number.isFinite(walletBdtPerUsd) || walletBdtPerUsd < 50 || walletBdtPerUsd > 500) throw new Error("WALLET_BDT_PER_USD must be a number from 50 to 500.");
+const numberSetting = (name, fallback, min, max) => {
+  const raw = process.env[name];
+  const value = raw === undefined || raw === "" ? fallback : Number(raw);
+  if (!Number.isFinite(value) || value < min || value > max) throw new Error(`${name} must be a number from ${min} to ${max}.`);
+  return value;
+};
+// Minimum recharge and the bonus rule are set in taka; the USD amounts are their value at the rate above.
+const walletMinTopupBdt = numberSetting("WALLET_MIN_TOPUP_BDT", 100, 1, 100000);
+const walletBonusThresholdBdt = numberSetting("WALLET_BONUS_THRESHOLD_BDT", 5000, 1, 10000000);
+const walletBonusPercent = numberSetting("WALLET_BONUS_PERCENT", 10, 0, 100);
+// Rounded up to the cent, so the USD amount is never worth less than the taka amount.
+const bdtToUsdCeil = (bdt) => Math.ceil((bdt / walletBdtPerUsd) * 100 - 1e-9) / 100;
 
 const frontendOrigin = process.env.FRONTEND_ORIGIN || "http://localhost:3000";
 const authUrl = process.env.BETTER_AUTH_URL || "http://localhost:4000";
@@ -51,8 +63,10 @@ export const config = {
   serviceFeePercent,
   wallet: {
     bdtPerUsd: walletBdtPerUsd,
-    minTopup: { USD: 10, BDT: 1000 },
+    minTopup: { USD: bdtToUsdCeil(walletMinTopupBdt), BDT: walletMinTopupBdt },
     maxTopup: { USD: 5000, BDT: 500000 },
+    // Recharges of at least `threshold` get `percent` extra added to the wallet.
+    bonus: { percent: walletBonusPercent, threshold: { USD: bdtToUsdCeil(walletBonusThresholdBdt), BDT: walletBonusThresholdBdt } },
   },
   authEnabled,
   mongoUri,

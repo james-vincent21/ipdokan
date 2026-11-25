@@ -12,6 +12,8 @@ const walletTransactionSchema = new mongoose.Schema({
   type: { type: String, enum: ["topup", "purchase", "refund"], required: true },
   status: { type: String, enum: ["pending", "completed", "failed"], default: "pending", index: true },
   amountCents: { type: Number, required: true },
+  // Top-ups: the part of amountCents that is a bonus (e.g. 10% extra on large recharges).
+  bonusCents: { type: Number, default: 0, min: 0 },
   balanceAfterCents: { type: Number, default: null },
   // Top-ups: what the customer paid at the gateway, and the BDT rate used to convert it to USD.
   method: { type: String, enum: ["zinipay", "cryptomus", "wallet"], required: true },

@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { config } from "../config/env.js";
 import { WalletTransaction } from "../models/wallet.model.js";
 import { Order } from "../models/order.model.js";
-import { WalletError, chargeWalletForOrders, fromCents, refundToWallet, toCents, topupCreditCents, walletBalanceCents } from "../lib/wallet.js";
+import { WalletError, chargeWalletForOrders, fromCents, refundToWallet, toCents, topupBonusCents, topupCreditCents, walletBalanceCents } from "../lib/wallet.js";
 import { fulfillPaidOrder, PENDING_ORDER_EXPIRY_MS } from "./store.controller.js";
 import { settleZinipayTopup, startZinipayTopup } from "./zinipay.controller.js";
 import { settleCryptomusTopup, startCryptomusTopup } from "./cryptomus.controller.js";
@@ -15,7 +15,7 @@ const methodAvailable = (currency) => currency === "BDT" ? Boolean(config.zinipa
 function publicTransaction(transaction) {
   return {
     id: String(transaction._id), type: transaction.type, status: transaction.status, method: transaction.method,
-    amountUsd: fromCents(transaction.amountCents), balanceAfterUsd: transaction.balanceAfterCents === null ? null : fromCents(transaction.balanceAfterCents),
+    amountUsd: fromCents(transaction.amountCents), bonusUsd: fromCents(transaction.bonusCents || 0), balanceAfterUsd: transaction.balanceAfterCents === null ? null : fromCents(transaction.balanceAfterCents),
     paidAmount: transaction.paidAmount || 0, paidCurrency: transaction.paidCurrency, bdtPerUsd: transaction.bdtPerUsd || 0,
     orderCount: transaction.orderIds?.length || 0, note: transaction.note || "", createdAt: transaction.createdAt, completedAt: transaction.completedAt,
   };
@@ -35,7 +35,7 @@ export async function getWallet(req, res, next) {
     const balanceUsd = fromCents(balanceCents);
     res.json({
       balanceUsd, balanceBdt: Math.round(balanceUsd * config.wallet.bdtPerUsd * 100) / 100,
-      bdtPerUsd: config.wallet.bdtPerUsd, minTopup: config.wallet.minTopup, maxTopup: config.wallet.maxTopup,
+      bdtPerUsd: config.wallet.bdtPerUsd, minTopup: config.wallet.minTopup, maxTopup: config.wallet.maxTopup, bonus: config.wallet.bonus,
       methods: { USD: methodAvailable("USD") ? TOPUP_METHOD.USD : "", BDT: methodAvailable("BDT") ? TOPUP_METHOD.BDT : "" },
       transactions: transactions.map(publicTransaction),
     });
@@ -52,7 +52,7 @@ export async function createTopup(req, res, next) {
     const max = config.wallet.maxTopup[currency];
     const decimals = currency === "BDT" ? 0 : 2;
     if (!Number.isFinite(amount) || Math.round(amount * 10 ** decimals) !== amount * 10 ** decimals) throw new WalletError(currency === "BDT" ? "Enter a whole taka amount." : "Enter an amount with at most 2 decimals.");
-    if (amount < min) throw new WalletError(`The minimum recharge is ${currency === "BDT" ? `৳${min}` : `$${min}`}.`);
+    if (amount < min) throw new WalletError(`The minimum recharge is ${currency === "BDT" ? `৳${min}` : `$${min.toFixed(2)}`}.`);
     if (amount > max) throw new WalletError(`The maximum recharge is ${currency === "BDT" ? `৳${max}` : `$${max}`} at a time.`);
     if (!methodAvailable(currency)) throw new WalletError(`Recharging in ${currency} is not available right now.`, 503);
     // Old top-ups that never got paid do not block anything, but limit how many can be open at once.
@@ -60,9 +60,12 @@ export async function createTopup(req, res, next) {
     if (open >= 5) throw new WalletError("You have several unfinished recharges. Finish or wait for them before starting another.", 429);
 
     const bdtPerUsd = config.wallet.bdtPerUsd;
+    // The bonus is fixed when the recharge starts and is only credited, with the rest, after payment.
+    const creditCents = topupCreditCents(amount, currency, bdtPerUsd);
+    const bonusCents = topupBonusCents(amount, currency, creditCents);
     const transaction = await WalletTransaction.create({
       userId: req.user.id, type: "topup", status: "pending", method: TOPUP_METHOD[currency],
-      amountCents: topupCreditCents(amount, currency, bdtPerUsd), paidAmount: amount, paidCurrency: currency, bdtPerUsd,
+      amountCents: creditCents + bonusCents, bonusCents, paidAmount: amount, paidCurrency: currency, bdtPerUsd,
     });
     const url = currency === "BDT" ? await startZinipayTopup(transaction, req.user) : await startCryptomusTopup(transaction);
     res.status(201).json({ url, topupId: String(transaction._id) });
