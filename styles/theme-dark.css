@@ -547,11 +547,11 @@ html[data-theme="dark"] .telegram-bot-badge {
 html[data-theme="dark"] .telegram-bot-button {
     background: linear-gradient(135deg, #3977ff, #2858df)
 }
-html[data-theme="dark"] .telegram-device {
+html[data-theme="dark"] .iphone-screen {
     background: rgb(26 27 30)
 }
-html[data-theme="dark"] .telegram-device::before {
-    background: rgb(26 27 30)
+html[data-theme="dark"] .iphone-home-indicator {
+    background: currentColor
 }
 html[data-theme="dark"] .telegram-device-nav span:first-child {
     background: rgb(46 47 53)
@@ -570,6 +570,30 @@ html[data-theme="dark"] .telegram-info-card hr {
 }
 html[data-theme="dark"] .telegram-device-button {
     background: #2d72e8
+}
+html[data-theme="dark"] .tg-search {
+    background: rgb(43 45 50)
+}
+html[data-theme="dark"] .tg-caret {
+    background: #70a6ff
+}
+html[data-theme="dark"] .tg-avatar-bot {
+    background: radial-gradient(circle at 30% 25%, #235da6, #071126 72%)
+}
+html[data-theme="dark"] .tg-result {
+    background: rgb(43 45 50)
+}
+html[data-theme="dark"] .tg-tap {
+    background: rgb(112 166 255 / 35%)
+}
+html[data-theme="dark"] .tg-out {
+    background: #2d72e8
+}
+html[data-theme="dark"] .tg-in {
+    background: rgb(43 45 50)
+}
+html[data-theme="dark"] .tg-keyboard span {
+    background: rgb(112 166 255 / 16%)
 }
 html[data-theme="dark"] .telegram-scene-orb {
     background: #2458dc
@@ -747,8 +771,33 @@ html[data-theme="dark"] .nav-indicator {
 html[data-theme="dark"] .popular-product-card,
 html[data-theme="dark"] .store-product-card,
 html[data-theme="dark"] .proxy-plan-card,
-html[data-theme="dark"] .proxy-type-card:not(.is-selected) {
+html[data-theme="dark"] .proxy-type-card:not(.is-selected),
+html[data-theme="dark"] .benefit-card,
+html[data-theme="dark"] .service-card,
+html[data-theme="dark"] .overview-service-card,
+html[data-theme="dark"] .trust-feature {
     background: rgb(245 242 235 / 30%)
+}
+html[data-theme="dark"] .popular-product-card:hover,
+html[data-theme="dark"] .store-product-card:hover,
+html[data-theme="dark"] .proxy-type-card:not(.is-selected):hover,
+html[data-theme="dark"] .benefit-card:hover,
+html[data-theme="dark"] .service-card:hover,
+html[data-theme="dark"] .overview-service-card:hover,
+html[data-theme="dark"] .trust-feature:hover {
+    background: rgb(245 242 235 / 30%)
+}
+html[data-theme="dark"] .telegram-device {
+    background: #050506
+}
+html[data-theme="dark"] .iphone-island {
+    background: radial-gradient(circle at 82% 50%, #1c2340 0 3px, #0b0d16 4px, transparent 5.5px), #000
+}
+html[data-theme="dark"] .iphone-button {
+    background: linear-gradient(90deg, #8d9098, #c9ccd3 50%, #8d9098)
+}
+html[data-theme="dark"] .iphone-camera-control {
+    background: linear-gradient(90deg, #6d7078, #a7aab2)
 }
 
 html[data-theme="dark"] {

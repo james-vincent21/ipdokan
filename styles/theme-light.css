@@ -1316,14 +1316,9 @@ html[data-theme="light"] .telegram-bot-button {
     color: white;
     box-shadow: 0 9px 26px rgb(255 255 255 / 0%)
 }
-html[data-theme="light"] .telegram-device {
-    border: 5px solid rgb(129 132 139);
+html[data-theme="light"] .iphone-screen {
     background: rgb(241 243 246);
-    color: rgb(26 26 26);
-    box-shadow: 0 0 0 2px rgb(255 255 255 / 0%), 0 25px 90px rgb(13 59 199 / 8.8%)
-}
-html[data-theme="light"] .telegram-device::before {
-    background: rgb(241 243 246)
+    color: rgb(26 26 26)
 }
 html[data-theme="light"] .telegram-device-nav {
     color: rgb(0 69 184)
@@ -1361,6 +1356,74 @@ html[data-theme="light"] .telegram-info-card p {
 html[data-theme="light"] .telegram-device-button {
     background: rgb(45 114 232);
     color: #fff
+}
+html[data-theme="light"] .tg-list-head {
+    color: rgb(0 69 184)
+}
+html[data-theme="light"] .tg-list-head strong {
+    color: rgb(26 26 26)
+}
+html[data-theme="light"] .tg-search {
+    background: rgb(254 254 254);
+    color: rgb(102 105 114)
+}
+html[data-theme="light"] .tg-search.is-active {
+    color: rgb(26 26 26);
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0%)
+}
+html[data-theme="light"] .tg-caret {
+    background: rgb(112 166 255);
+    color: #fff
+}
+html[data-theme="light"] .tg-cancel {
+    color: rgb(0 69 184)
+}
+html[data-theme="light"] .tg-row {
+    border-bottom: 1px solid rgb(15 23 42 / 7.2%)
+}
+html[data-theme="light"] .tg-avatar {
+    color: rgb(26 26 26)
+}
+html[data-theme="light"] .tg-avatar-bot {
+    background: radial-gradient(circle at 30% 25%, rgb(35 93 166), rgb(248 249 252) 72%);
+    color: #fff
+}
+html[data-theme="light"] .tg-row-text strong {
+    color: rgb(26 26 26)
+}
+html[data-theme="light"] .tg-row-text small {
+    color: rgb(102 105 114)
+}
+html[data-theme="light"] .tg-row time {
+    color: rgb(102 105 114)
+}
+html[data-theme="light"] .tg-section-label {
+    color: rgb(102 105 114)
+}
+html[data-theme="light"] .tg-result {
+    background: rgb(254 254 254)
+}
+html[data-theme="light"] .tg-tap {
+    background: rgb(112 166 255 / 35%);
+    box-shadow: 0 0 0 2px rgb(255 255 255 / 0%)
+}
+html[data-theme="light"] .tg-chat-head {
+    border-bottom: 1px solid rgb(15 23 42 / 9.6%)
+}
+html[data-theme="light"] .tg-back {
+    color: rgb(0 69 184)
+}
+html[data-theme="light"] .tg-out {
+    background: rgb(45 114 232);
+    color: #fff
+}
+html[data-theme="light"] .tg-in {
+    background: rgb(254 254 254);
+    color: rgb(24 25 29)
+}
+html[data-theme="light"] .tg-keyboard span {
+    background: rgb(112 166 255 / 16%);
+    color: rgb(0 63 184)
 }
 html[data-theme="light"] .telegram-scene-orb {
     background: rgb(36 88 220);
@@ -1806,19 +1869,41 @@ html[data-theme="light"] .nav-indicator {
 html[data-theme="light"] .popular-product-card,
 html[data-theme="light"] .store-product-card,
 html[data-theme="light"] .proxy-plan-card,
-html[data-theme="light"] .proxy-type-card:not(.is-selected) {
+html[data-theme="light"] .proxy-type-card:not(.is-selected),
+html[data-theme="light"] .benefit-card,
+html[data-theme="light"] .service-card,
+html[data-theme="light"] .overview-service-card,
+html[data-theme="light"] .trust-feature {
     border: 1px solid rgb(255 255 255 / 13%);
     background: rgb(245 242 235 / 30%);
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0%), inset 0 -1px 0 rgb(255 255 255 / 0%), 0 2px 0 rgb(0 0 0 / 10.5%), 0 4px 0 rgb(0 0 0 / 7.7%), 0 6px 0 rgb(0 0 0 / 4.9%), 0 16px 32px rgb(0 0 0 / 11.9%)
 }
 html[data-theme="light"] .popular-product-card:hover,
 html[data-theme="light"] .store-product-card:hover,
-html[data-theme="light"] .proxy-type-card:not(.is-selected):hover {
+html[data-theme="light"] .proxy-type-card:not(.is-selected):hover,
+html[data-theme="light"] .benefit-card:hover,
+html[data-theme="light"] .service-card:hover,
+html[data-theme="light"] .overview-service-card:hover,
+html[data-theme="light"] .trust-feature:hover {
     border-color: rgb(0 57 184 / 40%);
+    background: rgb(245 242 235 / 30%);
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0%), 0 2px 0 rgb(0 0 0 / 10.5%), 0 5px 0 rgb(0 0 0 / 7.7%), 0 8px 0 rgb(0 0 0 / 4.9%), 0 26px 44px rgb(20 50 140 / 11.9%)
 }
 html[data-theme="light"] .proxy-plan-card.is-selected {
     box-shadow: 0 0 0 1px var(--blue), inset 0 1px 0 rgb(255 255 255 / 0%), 0 14px 34px rgb(255 255 255 / 0%)
+}
+html[data-theme="light"] .telegram-device {
+    background: #050506;
+    box-shadow: inset 0 0 0 1px #2a2b30, 0 0 0 3px #b8bbc2, 0 0 0 4px #7d8088, 0 0 0 5px #3c3e44, 0 30px 70px rgb(0 0 0 / 38%), 0 10px 24px rgb(0 0 0 / 25%)
+}
+html[data-theme="light"] .iphone-island {
+    background: radial-gradient(circle at 82% 50%, #1c2340 0 3px, #0b0d16 4px, transparent 5.5px), #000
+}
+html[data-theme="light"] .iphone-button {
+    background: linear-gradient(90deg, #8d9098, #c9ccd3 50%, #8d9098)
+}
+html[data-theme="light"] .iphone-camera-control {
+    background: linear-gradient(90deg, #6d7078, #a7aab2)
 }
 
 html[data-theme="light"] {
@@ -1837,7 +1922,13 @@ html[data-theme="light"] .brand-logo, html[data-theme="light"] .footer-logo img 
 html[data-theme="light"] .proxy-type-card.is-selected .proxy-type-icon { color: #fff; }
 /* Cards are white with a soft shadow instead of the glow they have on dark. */
 html[data-theme="light"] .profile-card, html[data-theme="light"] .admin-card { background: #fff; box-shadow: 0 1px 2px rgb(15 23 42 / 6%), 0 8px 24px rgb(15 23 42 / 6%); }
+/* The About feature cards were dark blue with white text; they are now light glass, so use dark text. */
+html[data-theme="light"] .trust-feature { color: var(--foreground); }
+/* Letters on the coloured chat avatars in the phone animation stay white. */
+html[data-theme="light"] .tg-avatar { color: #fff; }
+/* The Telegram avatar shows the white-lettered logo: keep its circle dark blue. */
+html[data-theme="light"] .telegram-profile-logo, html[data-theme="light"] .tg-avatar-bot { background: radial-gradient(circle at 30% 25%, #235da6, #071126 72%); }
 /* Glass product cards in light mode: off-white at 30% with a white top edge and a soft blue-grey shadow. */
-html[data-theme="light"] .popular-product-card, html[data-theme="light"] .store-product-card, html[data-theme="light"] .proxy-plan-card, html[data-theme="light"] .proxy-type-card:not(.is-selected) { border: 1px solid rgb(255 255 255 / 90%); background: rgb(245 242 235 / 30%); box-shadow: inset 0 1px 0 #fff, 0 2px 0 rgb(140 155 190 / 35%), 0 4px 0 rgb(140 155 190 / 25%), 0 6px 0 rgb(140 155 190 / 15%), 0 16px 30px rgb(40 70 140 / 14%); }
-html[data-theme="light"] .popular-product-card:hover, html[data-theme="light"] .store-product-card:hover, html[data-theme="light"] .proxy-type-card:not(.is-selected):hover { border-color: rgb(47 107 255 / 35%); box-shadow: inset 0 1px 0 #fff, 0 2px 0 rgb(120 145 200 / 40%), 0 5px 0 rgb(120 145 200 / 28%), 0 8px 0 rgb(120 145 200 / 16%), 0 26px 40px rgb(47 107 255 / 20%); }
+html[data-theme="light"] .popular-product-card, html[data-theme="light"] .store-product-card, html[data-theme="light"] .proxy-plan-card, html[data-theme="light"] .proxy-type-card:not(.is-selected), html[data-theme="light"] .benefit-card, html[data-theme="light"] .service-card, html[data-theme="light"] .overview-service-card, html[data-theme="light"] .trust-feature { border: 1px solid rgb(255 255 255 / 90%); background: rgb(245 242 235 / 30%); box-shadow: inset 0 1px 0 #fff, 0 2px 0 rgb(140 155 190 / 35%), 0 4px 0 rgb(140 155 190 / 25%), 0 6px 0 rgb(140 155 190 / 15%), 0 16px 30px rgb(40 70 140 / 14%); }
+html[data-theme="light"] .popular-product-card:hover, html[data-theme="light"] .store-product-card:hover, html[data-theme="light"] .proxy-type-card:not(.is-selected):hover, html[data-theme="light"] .benefit-card:hover, html[data-theme="light"] .service-card:hover, html[data-theme="light"] .overview-service-card:hover, html[data-theme="light"] .trust-feature:hover { background: rgb(245 242 235 / 30%); border-color: rgb(47 107 255 / 35%); box-shadow: inset 0 1px 0 #fff, 0 2px 0 rgb(120 145 200 / 40%), 0 5px 0 rgb(120 145 200 / 28%), 0 8px 0 rgb(120 145 200 / 16%), 0 26px 40px rgb(47 107 255 / 20%); }
 html[data-theme="light"] .proxy-plan-card.is-selected { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue), inset 0 1px 0 #fff, 0 14px 34px rgb(47 107 255 / 16%); }

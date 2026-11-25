@@ -5,7 +5,7 @@ import { useEffect } from "react";
 // 3D product cards: while the mouse is over a card, the card tilts toward the pointer.
 // One listener for the whole page (cards rendered later are covered too); it only sets two CSS
 // variables per frame, and the tilt itself is drawn in CSS (see "3D product cards" in globals.css).
-const CARDS = ".popular-product-card, .store-product-card, .proxy-plan-card, .proxy-type-card";
+const CARDS = ".popular-product-card, .store-product-card, .proxy-plan-card, .proxy-type-card, .benefit-card, .service-card, .overview-service-card, .trust-feature";
 const MAX_TILT = 8; // degrees
 
 export function CardTilt() {

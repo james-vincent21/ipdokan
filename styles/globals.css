@@ -714,7 +714,7 @@ a { color: inherit; }
 .partner-logo img { display: block; width: 100%; height: 56px; object-fit: contain; }
 .partner-business-label { color: #252525; font-size: 11px; line-height: 1; }
 
-.telegram-bot-cta { position: relative; overflow: hidden; border-top: 1px solid var(--line); background: var(--background); }
+.telegram-bot-cta { scroll-margin-top: 84px; position: relative; overflow: hidden; border-top: 1px solid var(--line); background: var(--background); }
 .telegram-bot-inner { display: grid; min-height: 600px; grid-template-columns: 1fr 1fr; align-items: center; gap: 5%; width: min(100% - 48px, 1440px); margin-inline: auto; }
 .telegram-bot-copy { position: relative; z-index: 1; padding: 64px 0; }
 .telegram-bot-badge { display: inline-flex; align-items: center; gap: 8px; border: 1px solid rgb(255 255 255 / 8%); border-radius: 999px; background: #20232b; padding: 9px 15px; color: #e8ecf5; font-size: 14px; }
@@ -723,10 +723,17 @@ a { color: inherit; }
 .telegram-bot-copy p { max-width: 520px; margin: 0; color: #a4adbf; font-size: 17px; line-height: 1.7; }
 .telegram-bot-button { display: inline-flex; min-height: 48px; align-items: center; gap: 12px; margin-top: 34px; border: 1px solid rgb(125 163 255 / 40%); border-radius: 999px; background: linear-gradient(135deg, #3977ff, #2858df); padding: 0 23px; color: white; font-size: 14px; font-weight: 700; text-decoration: none; box-shadow: 0 9px 26px rgb(39 100 238 / 23%); transition: transform .18s ease, filter .18s ease; }
 .telegram-bot-button:hover { transform: translateY(-2px); filter: brightness(1.07); }
-.telegram-device-scene { position: relative; display: flex; min-height: 600px; align-items: flex-end; justify-content: center; overflow: hidden; padding-top: 45px; }
-.telegram-device { position: relative; z-index: 1; width: min(78%, 390px); min-width: 290px; height: 560px; overflow: hidden; border: 5px solid #74777e; border-bottom: 0; border-radius: 54px 54px 0 0; background: #050608; padding: 22px 22px 28px; color: white; box-shadow: 0 0 0 2px rgb(255 255 255 / 8%), 0 25px 90px rgb(13 59 199 / 25%); }
-.telegram-device::before { position: absolute; top: 8px; left: 50%; width: 92px; height: 17px; transform: translateX(-50%); border-radius: 0 0 12px 12px; background: #050608; content: ""; }
-.telegram-device-status { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px 20px; font-size: 11px; font-weight: 600; }
+.telegram-device-scene { position: relative; display: flex; min-height: 720px; align-items: center; justify-content: center; padding: 30px 0; }
+/* The phone: an iPhone 17-style device drawn in CSS (no logo). Width sets the size; height follows the
+   real 71.5 × 149.6 mm proportions. The screen (.iphone-screen) follows the site theme; the hardware
+   (frame, bezel, Dynamic Island, buttons) is in the @theme-same block below so it looks the same in both. */
+.telegram-device { --iphone-w: 316px; position: relative; z-index: 1; width: var(--iphone-w); aspect-ratio: 71.5 / 149.6; flex: 0 0 auto; border-radius: calc(var(--iphone-w) * .178); padding: calc(var(--iphone-w) * .034); }
+.iphone-screen { position: relative; height: 100%; overflow: hidden; border-radius: calc(var(--iphone-w) * .145); background: #050608; color: #fff; }
+.iphone-home-indicator { position: absolute; z-index: 3; bottom: 8px; left: 50%; width: 38%; height: 5px; transform: translateX(-50%); border-radius: 3px; background: currentColor; opacity: .85; }
+
+.telegram-device-status { position: relative; z-index: 3; display: flex; height: 50px; align-items: center; justify-content: space-between; padding: 4px 26px 0 32px; font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.iphone-status-icons { display: flex; align-items: center; gap: 5px; }
+.iphone-status-icons svg { height: 11px; width: auto; fill: currentColor; }
 .telegram-device-nav { display: flex; height: 42px; align-items: center; justify-content: space-between; color: #70a6ff; font-size: 15px; }
 .telegram-device-nav span:first-child { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 50%; background: #202126; font-size: 28px; }
 .telegram-profile { display: grid; justify-items: center; gap: 8px; padding: 5px 0 20px; text-align: center; }
@@ -742,6 +749,73 @@ a { color: inherit; }
 .telegram-info-card hr { height: 1px; margin: 15px 0; border: 0; background: rgb(255 255 255 / 8%); }
 .telegram-info-card p { margin: 5px 0 0; color: #e2e3e7; font-size: 12px; line-height: 1.55; }
 .telegram-device-button { margin-top: 15px; border-radius: 11px; background: #2d72e8; padding: 11px; color: #fff; font-size: 13px; font-weight: 600; text-align: center; }
+/* Phone animation (16 s loop, only while .is-playing): chat list scrolls → search "ipdokanbot" →
+   bot profile → chat with /start and the bot's menu. Without .is-playing only the profile shows. */
+.tg-screens { position: absolute; inset: 54px 14px 0; overflow: hidden; }
+.tg-screen { position: absolute; inset: 0; opacity: 0; }
+.tg-screen-profile { opacity: 1; }
+.tg-list-head { display: flex; height: 32px; align-items: center; justify-content: space-between; color: #70a6ff; font-size: 13px; }
+.tg-list-head strong { color: #fff; font-size: 16px; }
+.tg-search { position: relative; display: flex; height: 36px; align-items: center; gap: 8px; margin: 6px 0 10px; border-radius: 11px; background: #1d1e22; padding: 0 12px; color: #8d9099; font-size: 13px; }
+.tg-search-icon { width: 16px; height: 16px; flex: 0 0 16px; }
+.tg-search.is-active { color: #fff; box-shadow: 0 0 0 1px rgb(112 166 255 / 55%); }
+/* Typing: the text box widens one letter at a time ("ipdokanbot" is 10 letters), so the caret follows it. */
+.tg-typed { display: inline-block; overflow: hidden; width: 10ch; white-space: nowrap; }
+.tg-caret { width: 2px; height: 16px; margin-left: -6px; background: #70a6ff; }
+.tg-cancel { margin-left: auto; color: #70a6ff; font-size: 12px; }
+.tg-list { height: calc(100% - 84px); overflow: hidden; }
+.tg-row { position: relative; display: flex; align-items: center; gap: 11px; border-bottom: 1px solid rgb(255 255 255 / 6%); padding: 9px 4px; }
+.tg-avatar { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; overflow: hidden; border-radius: 50%; color: #fff; font-size: 16px; font-weight: 700; }
+.tg-avatar-bot { background: radial-gradient(circle at 30% 25%, #235da6, #071126 72%); }
+.tg-avatar-bot img { width: 50px; height: 28px; object-fit: contain; }
+.tg-row-text { display: grid; min-width: 0; flex: 1; gap: 2px; }
+.tg-row-text strong { overflow: hidden; color: #fff; font-size: 13.5px; text-overflow: ellipsis; white-space: nowrap; }
+.tg-row-text small { overflow: hidden; color: #8d9099; font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+.tg-row time { align-self: flex-start; margin-top: 3px; color: #8d9099; font-size: 11px; }
+.tg-section-label { display: block; margin: 4px 2px 6px; color: #8d9099; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+.tg-result { border: 0; border-radius: 12px; background: #1d1e22; padding: 9px 10px; }
+.tg-tap { position: absolute; top: 50%; left: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; background: rgb(112 166 255 / 35%); box-shadow: 0 0 0 2px rgb(112 166 255 / 55%); opacity: 0; pointer-events: none; }
+.tg-message-tap { position: relative; }
+.tg-chat-head { display: flex; height: 50px; align-items: center; gap: 10px; border-bottom: 1px solid rgb(255 255 255 / 8%); }
+.tg-chat-head .tg-avatar { width: 36px; height: 36px; flex-basis: 36px; }
+.tg-back { color: #70a6ff; font-size: 26px; line-height: 1; }
+.tg-messages { display: flex; flex-direction: column; gap: 8px; padding: 14px 2px; }
+.tg-bubble { max-width: 82%; margin: 0; border-radius: 14px; padding: 8px 12px; font-size: 12.5px; line-height: 1.45; }
+.tg-out { align-self: flex-end; border-bottom-right-radius: 4px; background: #2d72e8; color: #fff; }
+.tg-in { align-self: flex-start; border-bottom-left-radius: 4px; background: #1d1e22; color: #e2e3e7; }
+.tg-keyboard { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
+.tg-keyboard span { display: grid; min-height: 36px; place-items: center; border-radius: 10px; background: rgb(112 166 255 / 16%); color: #bcd3ff; font-size: 12px; font-weight: 600; }
+
+.telegram-device.is-playing .tg-screen-list { animation: tg-list-screen 16s infinite; }
+.telegram-device.is-playing .tg-list-scroll { animation: tg-list-scroll 16s infinite ease-in-out; }
+.telegram-device.is-playing .tg-search-tap .tg-tap { animation: tg-tap-1 16s infinite; }
+.telegram-device.is-playing .tg-screen-search { animation: tg-search-screen 16s infinite; }
+.telegram-device.is-playing .tg-typed { animation: tg-typing 16s infinite steps(10, end); }
+.telegram-device.is-playing .tg-caret { animation: tg-caret 1s infinite steps(1, end); }
+.telegram-device.is-playing .tg-result { animation: tg-result 16s infinite; }
+.telegram-device.is-playing .tg-result .tg-tap { animation: tg-tap-2 16s infinite; }
+.telegram-device.is-playing .tg-screen-profile { animation: tg-profile-screen 16s infinite; }
+.telegram-device.is-playing .tg-message-tap .tg-tap { animation: tg-tap-3 16s infinite; }
+.telegram-device.is-playing .tg-screen-chat { animation: tg-chat-screen 16s infinite; }
+.telegram-device.is-playing .tg-msg-1 { animation: tg-msg-1 16s infinite; }
+.telegram-device.is-playing .tg-msg-2 { animation: tg-msg-2 16s infinite; }
+.telegram-device.is-playing .tg-msg-3 { animation: tg-msg-3 16s infinite; }
+.telegram-device.is-playing .tg-msg-4 { animation: tg-msg-4 16s infinite; }
+@keyframes tg-list-screen { 0%, 27% { opacity: 1; transform: none; } 30%, 97% { opacity: 0; transform: translateX(-12%); } 100% { opacity: 1; transform: none; } }
+@keyframes tg-list-scroll { 0%, 4% { transform: translateY(0); } 13%, 18% { transform: translateY(-120px); } 24%, 100% { transform: translateY(0); } }
+@keyframes tg-search-screen { 0%, 28% { opacity: 0; transform: translateY(10px); } 31%, 53% { opacity: 1; transform: none; } 56%, 100% { opacity: 0; transform: translateX(-12%); } }
+@keyframes tg-typing { 0%, 32% { width: 0; } 42%, 100% { width: 10ch; } }
+@keyframes tg-caret { 0% { opacity: 1; } 50% { opacity: 0; } }
+@keyframes tg-result { 0%, 43% { opacity: 0; transform: translateY(8px); } 46%, 100% { opacity: 1; transform: none; } }
+@keyframes tg-profile-screen { 0%, 54% { opacity: 0; transform: translateX(30%); } 58%, 74% { opacity: 1; transform: none; } 77%, 100% { opacity: 0; transform: translateX(-12%); } }
+@keyframes tg-chat-screen { 0%, 75% { opacity: 0; transform: translateX(30%); } 78%, 97% { opacity: 1; transform: none; } 99.5%, 100% { opacity: 0; transform: none; } }
+@keyframes tg-msg-1 { 0%, 79% { opacity: 0; transform: translateY(8px); } 80.5%, 100% { opacity: 1; transform: none; } }
+@keyframes tg-msg-2 { 0%, 82% { opacity: 0; transform: translateY(8px); } 83.5%, 100% { opacity: 1; transform: none; } }
+@keyframes tg-msg-3 { 0%, 85% { opacity: 0; transform: translateY(8px); } 86.5%, 100% { opacity: 1; transform: none; } }
+@keyframes tg-msg-4 { 0%, 88% { opacity: 0; transform: translateY(8px); } 89.5%, 100% { opacity: 1; transform: none; } }
+@keyframes tg-tap-1 { 0%, 24% { opacity: 0; transform: scale(.4); } 26% { opacity: 1; transform: scale(1); } 29%, 100% { opacity: 0; transform: scale(1.6); } }
+@keyframes tg-tap-2 { 0%, 48% { opacity: 0; transform: scale(.4); } 50% { opacity: 1; transform: scale(1); } 53%, 100% { opacity: 0; transform: scale(1.6); } }
+@keyframes tg-tap-3 { 0%, 69% { opacity: 0; transform: scale(.4); } 71% { opacity: 1; transform: scale(1); } 74%, 100% { opacity: 0; transform: scale(1.6); } }
 .telegram-scene-orb { display: none; position: absolute; width: 420px; height: 420px; border-radius: 50%; background: #2458dc; filter: blur(130px); opacity: .24; }
 .telegram-scene-orb-one { right: 10%; bottom: -20%; }
 .telegram-scene-orb-two { top: 30%; left: 0; width: 220px; height: 220px; background: #193da5; opacity: .18; }
@@ -786,8 +860,11 @@ a { color: inherit; }
   .menu-lines { display: grid; gap: 4px; }
   .menu-lines i { display: block; width: 15px; height: 1.5px; border-radius: 2px; background: currentColor; }
   .nav-links { display: none; order: 4; width: 100%; flex: 0 0 100%; align-items: stretch; padding: 0 0 12px; }
-  .nav-links.is-open { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nav-links.is-open { display: grid; grid-template-columns: minmax(0, 1fr); }
   .nav-actions { grid-column: 1 / -1; margin: 6px 0 0; border-top: 1px solid var(--line); padding: 12px 8px 4px; }
+  /* In the open menu the action row (Wallet, Cart, theme, currency, sign in) wraps instead of running off screen. */
+  .nav-links.is-open .nav-actions { min-width: 0; flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
+  .nav-links.is-open .nav-actions .wallet-nav-link, .nav-links.is-open .nav-actions .cart-nav-link { flex: 1 1 120px; }
   .nav-actions .sign-in { margin-left: 0; }
   .nav-search-trigger { order: 2; margin-left: auto; }
   .nav-link { min-height: 45px; gap: 10px; border: 1px solid transparent; padding: 0 10px; font-size: 12px; }
@@ -798,8 +875,8 @@ a { color: inherit; }
 @media (max-width: 1000px) {
   .telegram-bot-inner { min-height: 540px; grid-template-columns: 1fr .9fr; gap: 2%; }
   .telegram-bot-copy h2 { font-size: clamp(32px, 4.4vw, 46px); }
-  .telegram-device-scene { min-height: 540px; }
-  .telegram-device { width: 90%; height: 500px; min-width: 260px; }
+  .telegram-device-scene { min-height: 660px; }
+  .telegram-device { --iphone-w: 290px; }
   .strategic-partners-inner { grid-template-columns: 1fr; gap: 24px; }
   .strategic-partners h2 br { display: none; }
   .partner-logo-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -830,10 +907,14 @@ a { color: inherit; }
   .telegram-bot-copy h2 { margin: 20px 0 13px; font-size: clamp(30px, 9vw, 42px); }
   .telegram-bot-copy p { font-size: 14px; }
   .telegram-bot-button { margin-top: 24px; }
-  .telegram-device-scene { min-height: 390px; padding-top: 15px; }
-  .telegram-device { width: min(88%, 330px); min-width: 0; height: 390px; border-radius: 40px 40px 0 0; padding: 18px 16px 20px; }
+  .telegram-device-scene { min-height: 600px; padding: 22px 0; }
+  .telegram-device { --iphone-w: 262px; }
   .telegram-profile { gap: 6px; padding-bottom: 12px; }
   .telegram-profile-logo { width: 65px; height: 65px; }
+  .telegram-profile-logo img { width: 58px; height: 32px; }
+  .telegram-device-status { padding: 4px 18px 0 24px; font-size: 13px; }
+  .iphone-status-icons { gap: 3px; }
+  .iphone-status-icons svg { height: 10px; }
   .telegram-profile strong { font-size: 16px; }
   .telegram-profile-actions { margin-bottom: 12px; }
   .telegram-profile-actions span { min-height: 42px; }
@@ -885,7 +966,7 @@ a { color: inherit; }
   .sign-in { min-height: 35px; padding: 0 10px; font-size: 11px; }
   .menu-toggle { padding: 8px 9px; }
   .menu-toggle-label { display: none; }
-  .nav-links.is-open { grid-template-columns: 1fr; }
+  .nav-links.is-open { grid-template-columns: minmax(0, 1fr); }
   .nav-link { min-height: 43px; }
   .hero { min-height: auto; padding: 0 19px 34px; }
   .services-section { padding: 62px 19px 72px; }
@@ -1230,25 +1311,38 @@ html[data-theme="light"] .nav-link-highlight.is-current, html[data-theme="light"
 
 /* Glass product cards: off-white at 30% opacity with a bright top edge. Light-mode values are in
    scripts/build-light-theme.mjs (LIGHT_EXTRAS). */
-.popular-product-card, .store-product-card, .proxy-plan-card, .proxy-type-card:not(.is-selected) {
+.popular-product-card, .store-product-card, .proxy-plan-card, .proxy-type-card:not(.is-selected), .benefit-card, .service-card, .overview-service-card, .trust-feature {
   border: 1px solid rgb(255 255 255 / 13%);
   background: rgb(245 242 235 / 30%);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 16%), inset 0 -1px 0 rgb(255 255 255 / 4%), 0 2px 0 rgb(0 0 0 / 30%), 0 4px 0 rgb(0 0 0 / 22%), 0 6px 0 rgb(0 0 0 / 14%), 0 16px 32px rgb(0 0 0 / 34%);
 }
-.popular-product-card:hover, .store-product-card:hover, .proxy-type-card:not(.is-selected):hover { border-color: rgb(140 176 255 / 40%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 22%), 0 2px 0 rgb(0 0 0 / 30%), 0 5px 0 rgb(0 0 0 / 22%), 0 8px 0 rgb(0 0 0 / 14%), 0 26px 44px rgb(20 50 140 / 34%); }
+.popular-product-card:hover, .store-product-card:hover, .proxy-type-card:not(.is-selected):hover, .benefit-card:hover, .service-card:hover, .overview-service-card:hover, .trust-feature:hover { border-color: rgb(140 176 255 / 40%); background: rgb(245 242 235 / 30%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 22%), 0 2px 0 rgb(0 0 0 / 30%), 0 5px 0 rgb(0 0 0 / 22%), 0 8px 0 rgb(0 0 0 / 14%), 0 26px 44px rgb(20 50 140 / 34%); }
 .proxy-plan-card.is-selected { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue), inset 0 1px 0 rgb(255 255 255 / 16%), 0 14px 34px rgb(57 119 255 / 22%); }
 
 /* 3D product cards: a visible thickness at rest; on hover the card lifts and tilts toward the mouse
    (the tilt angles come from components/ui/card-tilt.jsx). */
-.popular-product-card, .store-product-card, .proxy-plan-card, .proxy-type-card {
+.popular-product-card, .store-product-card, .proxy-plan-card, .proxy-type-card, .benefit-card, .service-card, .overview-service-card, .trust-feature {
   transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateY(0);
   transform-style: preserve-3d;
   transition: transform .45s cubic-bezier(.2, .9, .3, 1.2), box-shadow .3s, border-color .2s;
 }
-.popular-product-card:hover, .store-product-card:hover, .proxy-plan-card:hover, .proxy-type-card:hover {
+.popular-product-card:hover, .store-product-card:hover, .proxy-plan-card:hover, .proxy-type-card:hover, .benefit-card:hover, .service-card:hover, .overview-service-card:hover, .trust-feature:hover {
   transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateY(-6px) scale(1.02);
 }
-.popular-product-card.is-tilting, .store-product-card.is-tilting, .proxy-plan-card.is-tilting, .proxy-type-card.is-tilting { transition: transform .08s linear, box-shadow .3s, border-color .2s; }
+.popular-product-card.is-tilting, .store-product-card.is-tilting, .proxy-plan-card.is-tilting, .proxy-type-card.is-tilting, .benefit-card.is-tilting, .service-card.is-tilting, .overview-service-card.is-tilting, .trust-feature.is-tilting { transition: transform .08s linear, box-shadow .3s, border-color .2s; }
 @media (prefers-reduced-motion: reduce) {
-  .popular-product-card, .store-product-card, .proxy-plan-card, .proxy-type-card, .popular-product-card:hover, .store-product-card:hover, .proxy-plan-card:hover, .proxy-type-card:hover { transform: none; }
+  .popular-product-card, .store-product-card, .proxy-plan-card, .proxy-type-card, .popular-product-card:hover, .store-product-card:hover, .proxy-plan-card:hover, .proxy-type-card:hover, .benefit-card, .benefit-card:hover, .service-card, .service-card:hover, .overview-service-card, .overview-service-card:hover, .trust-feature, .trust-feature:hover { transform: none; }
 }
+
+/* @theme-same:start */
+/* iPhone hardware: black bezel, aluminium frame (inner edge, frame, outer edge, shadow), Dynamic Island
+   with a camera lens, and side buttons. */
+.telegram-device { background: #050506; box-shadow: inset 0 0 0 1px #2a2b30, 0 0 0 3px #b8bbc2, 0 0 0 4px #7d8088, 0 0 0 5px #3c3e44, 0 30px 70px rgb(0 0 0 / 38%), 0 10px 24px rgb(0 0 0 / 25%); }
+.iphone-island { position: absolute; z-index: 4; top: 11px; left: 50%; width: 30%; height: 28px; transform: translateX(-50%); border-radius: 20px; background: radial-gradient(circle at 82% 50%, #1c2340 0 3px, #0b0d16 4px, transparent 5.5px), #000; }
+.iphone-button { position: absolute; z-index: -1; width: 5px; border-radius: 2px; background: linear-gradient(90deg, #8d9098, #c9ccd3 50%, #8d9098); }
+.iphone-action { top: 17%; left: -9px; height: 5%; }
+.iphone-volume-up { top: 25%; left: -9px; height: 9%; }
+.iphone-volume-down { top: 36%; left: -9px; height: 9%; }
+.iphone-power { top: 29%; right: -9px; height: 14%; }
+.iphone-camera-control { top: 60%; right: -8px; width: 4px; height: 8%; border-radius: 2px; background: linear-gradient(90deg, #6d7078, #a7aab2); }
+/* @theme-same:end */

@@ -5,6 +5,7 @@ import { TrustAbout } from "@/components/sections/trust-about";
 import { SupportChat } from "@/components/ui/support-chat";
 import { StrategicPartners } from "@/components/sections/strategic-partners";
 import { ServicesOverview } from "@/components/sections/services-overview";
+import { TelegramBotCta } from "@/components/sections/telegram-bot-cta";
 import { SiteFooter } from "@/components/layout/site-footer";
 
 export default function HomePage() {
@@ -19,6 +20,7 @@ export default function HomePage() {
       <SupportChat />
       <StrategicPartners />
       <ServicesOverview />
+      <TelegramBotCta />
       <SiteFooter />
     </>
   );

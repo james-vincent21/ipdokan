@@ -141,7 +141,7 @@ export function ServiceCatalog() {
             </a>
           ))}
         </div>
-        <div className="services-note" id="support">
+        <div className="services-note">
           <span className="services-note-icon" aria-hidden="true">?</span>
           <p><strong>Not sure what you need?</strong><span>Use the chat button to ask about a service.</span></p>
         </div>

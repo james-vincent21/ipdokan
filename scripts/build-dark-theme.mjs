@@ -57,6 +57,18 @@ function toAsh(match) {
 }
 
 const source = postcss.parse(readFileSync(SOURCE, "utf8"));
+// Rules between /* @theme-same:start */ and /* @theme-same:end */ (nav pill, phone hardware) keep their
+// colours: they are repeated unchanged so they still beat the base rules.
+const sameInBothThemes = new Set();
+{
+  let inside = false;
+  source.walk((node) => {
+    if (node.type === "comment") {
+      if (node.text.includes("@theme-same:start")) inside = true;
+      if (node.text.includes("@theme-same:end")) inside = false;
+    } else if (node.type === "rule" && inside) sameInBothThemes.add(node);
+  });
+}
 const out = postcss.root();
 let rules = 0, changedCount = 0;
 source.walkRules((rule) => {
@@ -66,7 +78,7 @@ source.walkRules((rule) => {
   let touched = false;
   rule.each((decl) => {
     if (decl.type !== "decl" || !/^background(-color|-image)?$/.test(decl.prop)) return;
-    const value = decl.value.replace(COLOR_RE, toAsh);
+    const value = sameInBothThemes.has(rule) ? decl.value : decl.value.replace(COLOR_RE, toAsh);
     if (value !== decl.value) touched = true;
     decls.push(postcss.decl({ prop: decl.prop, value, important: decl.important }));
   });
