@@ -907,8 +907,9 @@ export async function expirePendingOrders() {
 
 export async function adminUsers(_req, res, next) {
   try {
-    const users = await mongoose.connection.collection("user").find({}, { projection: { name: 1, email: 1, image: 1, phone: 1, createdAt: 1, emailVerified: 1 } }).sort({ createdAt: -1 }).toArray();
+    const users = await mongoose.connection.collection("user").find({}, { projection: { name: 1, email: 1, image: 1, phone: 1, createdAt: 1, emailVerified: 1, banned: 1, banReason: 1, bannedAt: 1 } }).sort({ createdAt: -1 }).toArray();
     const orders = await Order.find().sort({ createdAt: -1 }).lean();
+    const adminSet = new Set([...config.adminEmails, ...(await AdminEmail.find({}, { email: 1 }).lean()).map((item) => item.email)]);
     const byUser = new Map();
     for (const order of orders) {
       const id = String(order.userId);
@@ -919,7 +920,7 @@ export async function adminUsers(_req, res, next) {
     }
     res.json({ users: users.map((user) => {
       const record = byUser.get(String(user._id)) || { purchases: [], paidTotals: {} };
-      return { id: user._id, name: user.name, email: user.email, image: user.image, phone: user.phone || "", createdAt: user.createdAt, orderCount: record.purchases.length, paidTotals: record.paidTotals, purchases: record.purchases };
+      return { id: user._id, name: user.name, email: user.email, image: user.image, phone: user.phone || "", createdAt: user.createdAt, banned: Boolean(user.banned), banReason: user.banReason || "", bannedAt: user.bannedAt || null, isAdmin: adminSet.has(String(user.email || "").toLowerCase()), orderCount: record.purchases.length, paidTotals: record.paidTotals, purchases: record.purchases };
     }) });
   } catch (error) { next(error); }
 }

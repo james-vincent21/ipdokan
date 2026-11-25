@@ -299,6 +299,21 @@ html[data-theme="dark"] .checkout-remove {
 html[data-theme="dark"] .admin-page {
     background: var(--background)
 }
+html[data-theme="dark"] .user-status {
+    background: rgb(34 197 94 / 14%)
+}
+html[data-theme="dark"] .user-status.is-banned {
+    background: rgb(239 68 68 / 14%)
+}
+html[data-theme="dark"] .user-status.is-admin {
+    background: rgb(57 119 255 / 16%)
+}
+html[data-theme="dark"] .admin-danger {
+    background: rgb(239 68 68 / 12%)
+}
+html[data-theme="dark"] .admin-danger:hover {
+    background: rgb(239 68 68 / 22%)
+}
 html[data-theme="dark"] .admin-refresh,
 html[data-theme="dark"] .admin-secondary {
     background: rgb(255 255 255 / 4%)

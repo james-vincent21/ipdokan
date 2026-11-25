@@ -375,6 +375,18 @@ a { color: inherit; }
 .checkout-back-link:hover { color: white; }
 .admin-page { min-height: 76vh; padding: 46px 22px 90px; background: var(--background); }
 .admin-shell { width: min(100%, 1320px); margin: 0 auto; }
+.admin-shell.is-wide { width: 100%; }
+/* Users: status and ban / delete actions */
+.user-status { display: inline-grid; gap: 2px; border-radius: 999px; background: rgb(34 197 94 / 14%); padding: 3px 9px; color: #4ade80; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.user-status small { max-width: 160px; overflow: hidden; color: var(--muted); font-weight: 500; text-overflow: ellipsis; }
+.user-status.is-banned { border-radius: 9px; background: rgb(239 68 68 / 14%); color: #f87171; }
+.user-status.is-admin { background: rgb(57 119 255 / 16%); color: #8caaf7; }
+.admin-table tr.is-banned td { opacity: .78; }
+.admin-user-actions { display: flex; gap: 6px; }
+.admin-user-actions button { min-height: 32px; white-space: nowrap; }
+.admin-secondary.is-warning { border-color: rgb(245 158 11 / 45%); color: #fbbf24; }
+.admin-danger { min-height: 38px; border: 1px solid rgb(239 68 68 / 45%); border-radius: 9px; background: rgb(239 68 68 / 12%); padding: 0 13px; color: #f87171; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.admin-danger:hover { background: rgb(239 68 68 / 22%); }
 .admin-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 25px; }
 .admin-heading h1 { margin: 8px 0 4px; color: #f4f6fb; font-size: clamp(30px, 4vw, 42px); letter-spacing: -.05em; }
 .admin-heading p, .admin-card-heading p { margin: 0; color: var(--muted); font-size: 13px; }

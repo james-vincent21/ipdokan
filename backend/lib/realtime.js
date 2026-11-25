@@ -49,7 +49,7 @@ export function initRealtime(httpServer) {
   io.use(async (socket, next) => {
     try {
       const session = auth ? await auth.api.getSession({ headers: fromNodeHeaders(socket.request.headers) }) : null;
-      socket.data.user = session?.user || null;
+      socket.data.user = session?.user && !session.user.banned ? session.user : null;
     } catch { socket.data.user = null; }
     next();
   });
@@ -102,6 +102,11 @@ export async function notifyUser(userId, { type, title, message = "", link = "" 
 // Live-only message to every admin who has the site open (not saved).
 export function notifyAdmins({ type, title, message = "", link = "/admin" }) {
   target()?.to("admins").emit("notification", { id: `admin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, type, title, message, link, read: false, createdAt: new Date(), live: true });
+}
+
+// Closes every open tab of a user, in every API process (after a ban or account deletion).
+export function disconnectUser(userId) {
+  try { target()?.in(`user:${userId}`).disconnectSockets(true); } catch (error) { console.error("Could not disconnect user:", error.message); }
 }
 
 export async function listNotifications(userId) {

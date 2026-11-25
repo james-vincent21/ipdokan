@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { APIError } from "better-auth/api";
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { emailOTP, jwt } from "better-auth/plugins";
@@ -51,6 +52,21 @@ export const auth = config.authEnabled ? betterAuth({
   user: {
     additionalFields: {
       phone: { type: "string", required: false, input: true },
+      // Set by an admin (Admin panel → Users). Banned users cannot sign in.
+      banned: { type: "boolean", required: false, input: false, defaultValue: false },
+    },
+  },
+  // Every sign-in (email, Google, OTP, OAuth) creates a session: a banned account gets none.
+  databaseHooks: {
+    session: {
+      create: {
+        async before(session) {
+          const id = String(session.userId);
+          const _id = mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id;
+          const user = await mongoose.connection.collection("user").findOne({ _id }, { projection: { banned: 1 } });
+          if (user?.banned) throw new APIError("FORBIDDEN", { message: "This account has been suspended. Contact support on Telegram if you think this is a mistake.", code: "ACCOUNT_BANNED" });
+        },
+      },
     },
   },
   session: {

@@ -628,6 +628,30 @@ html[data-theme="light"] .checkout-back-link {
 html[data-theme="light"] .checkout-back-link:hover {
     color: rgb(26 26 26)
 }
+html[data-theme="light"] .user-status {
+    background: rgb(34 197 94 / 14%);
+    color: rgb(29 185 86)
+}
+html[data-theme="light"] .user-status.is-banned {
+    background: rgb(239 68 68 / 14%);
+    color: rgb(179 4 4)
+}
+html[data-theme="light"] .user-status.is-admin {
+    background: rgb(57 119 255 / 16%);
+    color: rgb(8 55 176)
+}
+html[data-theme="light"] .admin-secondary.is-warning {
+    border-color: rgb(241 153 4 / 45%);
+    color: rgb(223 161 0)
+}
+html[data-theme="light"] .admin-danger {
+    border: 1px solid rgb(191 12 12 / 45%);
+    background: rgb(239 68 68 / 12%);
+    color: rgb(179 4 4)
+}
+html[data-theme="light"] .admin-danger:hover {
+    background: rgb(239 68 68 / 22%)
+}
 html[data-theme="light"] .admin-heading h1 {
     color: rgb(14 20 37)
 }

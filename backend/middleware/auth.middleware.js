@@ -26,12 +26,14 @@ export async function requireAuth(req, res, next) {
       });
       req.user = await User.findById(claims.sub);
       if (!req.user) return res.status(401).json({ error: "Please sign in to continue." });
+      if (req.user.get?.("banned")) return res.status(403).json({ error: "This account has been suspended." });
       req.authMethod = "bearer";
       return next();
     }
 
     const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
     if (!session) return res.status(401).json({ error: "Please sign in to continue." });
+    if (session.user.banned) return res.status(403).json({ error: "This account has been suspended." });
     req.user = session.user;
     req.session = session.session;
     next();
@@ -47,7 +49,7 @@ export async function optionalAuth(req, _res, next) {
   if (!auth) return next();
   try {
     const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
-    if (session?.user) {
+    if (session?.user && !session.user.banned) {
       req.user = session.user;
       req.session = session.session;
     }
