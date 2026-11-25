@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "backend:dev": "node --watch backend/server.js",
     "backend:start": "node backend/server.js",
-    "backend:seed-demo-admin": "node backend/scripts/seed-demo-admin.js"
+    "backend:seed-demo-admin": "node backend/scripts/seed-demo-admin.js",
+    "theme:light": "node scripts/build-light-theme.mjs"
   },
   "dependencies": {
     "@better-auth/oauth-provider": "^1.7.25",

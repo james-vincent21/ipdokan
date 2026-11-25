@@ -1,4 +1,6 @@
 import "@/styles/globals.css";
+import "@/styles/theme-light.css";
+import { DEFAULT_THEME, THEME_SCRIPT } from "@/components/layout/theme-toggle";
 
 export const metadata = {
   title: "IP DOKAN | Proxy & Server Solutions",
@@ -7,7 +9,11 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="bn" suppressHydrationWarning>
+    <html lang="bn" data-theme={DEFAULT_THEME} suppressHydrationWarning>
+      <head>
+        {/* Applies the visitor's saved theme before the first paint, so the page never flashes the wrong theme. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body>{children}</body>
     </html>
   );

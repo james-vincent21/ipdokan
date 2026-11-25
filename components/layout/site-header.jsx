@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { clearAdminDashboardCache } from "@/lib/admin-dashboard-cache";
 import { useCurrencyPreference } from "@/lib/currency-preference";
 import { Icon } from "@/components/ui/icons";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { productHref } from "@/lib/proxy-links";
 
 // Product categories shown under "Services" in the nav (and searchable on their own).
@@ -21,6 +22,23 @@ const discountItem = { label: "Discount Proxy Panel", href: "/catalog?category=D
 const supportItem = { label: "Support", href: "/#support", icon: "support" };
 const navItems = [allItem, discountItem, ...serviceItems, supportItem];
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+// Which nav item belongs to the current page ("" = none, e.g. the home page or the profile).
+function navKeyFor({ pathname, search, hash }) {
+  const category = new URLSearchParams(search).get("category") || "";
+  if (pathname.startsWith("/admin")) return "admin";
+  if (pathname.startsWith("/wallet")) return "wallet";
+  if (pathname.startsWith("/checkout")) return "cart";
+  if (pathname.startsWith("/proxies")) return "services";
+  if (pathname.startsWith("/catalog")) return category === discountItem.label ? "discount" : ["Dedicated Servers", "VPS"].includes(category) ? "services" : "all";
+  if (pathname.startsWith("/product")) return "all";
+  if (pathname === "/" && hash === "#support") return "support";
+  return "";
+}
+// The item that was current when a nav link was clicked; the next page slides the pill from there.
+const NAV_FROM_KEY = "ipdokan-nav-from";
+// Read once per page load (the placement effect runs again when the session loads, and twice in dev).
+let navSlideFrom = null;
 
 export function SiteHeader() {
   const { data: session, isPending: sessionPending } = authClient.useSession();
@@ -40,6 +58,9 @@ export function SiteHeader() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [currency, setCurrency] = useCurrencyPreference();
   const searchInputRef = useRef(null);
+  const navRef = useRef(null);
+  const indicatorRef = useRef(null);
+  const currentNavKey = useRef("");
   const searchLoadedRef = useRef(false);
   const matchingNavItems = searchQuery.trim()
     ? navItems.filter((item) => item.label.toLowerCase().includes(searchQuery.trim().toLowerCase()))
@@ -47,6 +68,62 @@ export function SiteHeader() {
   const matchingProducts = searchQuery.trim()
     ? searchProducts.filter((product) => [product.name, product.brand, product.category, product.codeNumber].some((field) => String(field || "").toLowerCase().includes(searchQuery.trim().toLowerCase()))).slice(0, 8)
     : [];
+
+  // Marks the current nav item and moves the blue pill behind it. After a click on another page the pill
+  // starts at the item that was current there and slides over. Done on the DOM, before paint.
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    const indicator = indicatorRef.current;
+    if (!nav || !indicator) return undefined;
+    const itemFor = (key) => (key ? nav.querySelector(`[data-nav-key="${key}"]`) : null);
+    const place = (element, animate) => {
+      if (!element || !element.offsetParent) { indicator.style.opacity = "0"; return; }
+      const box = nav.getBoundingClientRect();
+      const rect = element.getBoundingClientRect();
+      indicator.style.transition = animate ? "" : "none";
+      indicator.style.transform = `translate(${rect.left - box.left}px, ${rect.top - box.top + 1}px)`;
+      indicator.style.width = `${rect.width}px`;
+      indicator.style.height = `${rect.height}px`;
+      indicator.style.opacity = "1";
+    };
+    // Moves the pill to the current item: a slide from the previous item when it changed, otherwise a
+    // smooth correction (so a re-run during a slide continues it instead of jumping to the end).
+    const sync = () => {
+      const key = navKeyFor(window.location);
+      const previous = currentNavKey.current;
+      currentNavKey.current = key;
+      nav.querySelectorAll("[data-nav-key]").forEach((element) => {
+        const current = element.dataset.navKey === key;
+        element.classList.toggle("is-current", current);
+        if (element.tagName === "A") { if (current) element.setAttribute("aria-current", "page"); else element.removeAttribute("aria-current"); }
+      });
+      if (previous && previous !== key && itemFor(previous)) {
+        place(itemFor(previous), false);
+        indicator.getBoundingClientRect(); // apply the start position before the slide
+        place(itemFor(key), true);
+      } else place(itemFor(key), Boolean(previous) && indicator.style.opacity === "1");
+    };
+    if (navSlideFrom === null) {
+      navSlideFrom = "";
+      try { navSlideFrom = sessionStorage.getItem(NAV_FROM_KEY) || ""; sessionStorage.removeItem(NAV_FROM_KEY); } catch { /* storage blocked */ }
+    }
+    if (!currentNavKey.current) { currentNavKey.current = navSlideFrom; navSlideFrom = ""; }
+    sync();
+    const relayout = () => place(itemFor(currentNavKey.current), true);
+    const onHash = () => sync();
+    const observer = new ResizeObserver(relayout);
+    observer.observe(nav);
+    nav.querySelectorAll("[data-nav-key], .nav-actions").forEach((element) => observer.observe(element));
+    window.addEventListener("hashchange", onHash);
+    document.fonts?.ready.then(relayout).catch(() => {});
+    return () => { observer.disconnect(); window.removeEventListener("hashchange", onHash); };
+  }, [isAdmin, session?.user, sessionPending]);
+
+  // Remembers which item was current when a nav link is clicked, for the slide on the next page.
+  function rememberNavStart(event) {
+    if (!event.target.closest?.("a[data-nav-key]")) return;
+    try { sessionStorage.setItem(NAV_FROM_KEY, currentNavKey.current); } catch { /* storage blocked */ }
+  }
 
   useEffect(() => {
     if (sessionPending || !session?.user) { setIsAdmin(false); return; }
@@ -166,9 +243,10 @@ export function SiteHeader() {
           <span className="menu-toggle-label">{menuOpen ? "Close" : "Menu"}</span>
           <span className="menu-lines" aria-hidden="true"><i /><i /></span>
         </button>
-        <nav id="primary-navigation" className={`nav-links${menuOpen ? " is-open" : ""}`} aria-label="Main navigation">
-          <a className="nav-link is-active" href={allItem.href} onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name={allItem.icon} /></span>{allItem.label}</a>
-          <a className="nav-link nav-link-highlight" href={discountItem.href} onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name={discountItem.icon} /></span>{discountItem.label}</a>
+        <nav id="primary-navigation" ref={navRef} onClickCapture={rememberNavStart} className={`nav-links${menuOpen ? " is-open" : ""}`} aria-label="Main navigation">
+          <span className="nav-indicator" ref={indicatorRef} aria-hidden="true" />
+          <a className="nav-link" data-nav-key="all" href={allItem.href} onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name={allItem.icon} /></span>{allItem.label}</a>
+          <a className="nav-link nav-link-highlight" data-nav-key="discount" href={discountItem.href} onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name={discountItem.icon} /></span>{discountItem.label}</a>
           {/* Opens on hover (desktop) or tap (touch / mobile menu). */}
           <div
             className={`nav-dropdown${servicesOpen ? " is-open" : ""}`}
@@ -176,7 +254,7 @@ export function SiteHeader() {
             onPointerLeave={(event) => { if (event.pointerType === "mouse") { servicesHoverOpened.current = false; setServicesOpen(false); } }}
             onKeyDown={(event) => { if (event.key === "Escape") setServicesOpen(false); }}
           >
-            <button className="nav-link nav-dropdown-trigger" type="button" aria-expanded={servicesOpen} aria-controls="services-menu" onClick={() => {
+            <button className="nav-link nav-dropdown-trigger" data-nav-key="services" type="button" aria-expanded={servicesOpen} aria-controls="services-menu" onClick={() => {
               if (servicesHoverOpened.current) { servicesHoverOpened.current = false; setServicesOpen(true); }
               else setServicesOpen((open) => !open);
             }}>
@@ -191,12 +269,14 @@ export function SiteHeader() {
               ))}
             </div>
           </div>
-          <a className="nav-link" href={supportItem.href} onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name={supportItem.icon} /></span>{supportItem.label}</a>
+          <a className="nav-link" data-nav-key="support" href={supportItem.href} onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name={supportItem.icon} /></span>{supportItem.label}</a>
           <a className="nav-link account-nav-link" href="/profile" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="user" /></span>Account</a>
-          <a className="nav-link wallet-nav-link" href="/wallet" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="wallet" /></span>Wallet</a>
-          <a className="nav-link cart-nav-link" href="/checkout" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="cart" /></span>Cart</a>
-          {isAdmin && <a className="nav-link" href="/admin" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="dashboard" /></span>Admin dashboard</a>}
+          {isAdmin && <a className="nav-link" data-nav-key="admin" href="/admin" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="dashboard" /></span>Admin dashboard</a>}
           <div className="nav-actions">
+            {/* Wallet and cart sit on the right, next to the account controls. */}
+            <a className="nav-link nav-action-link wallet-nav-link" data-nav-key="wallet" href="/wallet" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="wallet" /></span>Wallet</a>
+            <a className="nav-link nav-action-link cart-nav-link" data-nav-key="cart" href="/checkout" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="cart" /></span>Cart</a>
+            <ThemeToggle />
             <div className="nav-currency-toggle" aria-label="Choose display currency"><button type="button" className={currency === "USD" ? "is-selected" : ""} aria-pressed={currency === "USD"} onClick={() => setCurrency("USD")}>USD</button><button type="button" className={currency === "BDT" ? "is-selected" : ""} aria-pressed={currency === "BDT"} onClick={() => setCurrency("BDT")}>BDT</button></div>
             {session?.user ? <><a className="sign-in signed-in-user" href="/profile" title="Open your account" onClick={() => setMenuOpen(false)}>
               <span className="signed-in-avatar">{(session.user.name || session.user.email || "U").slice(0, 1).toUpperCase()}</span>
