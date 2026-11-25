@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCurrencyPreference } from "@/lib/currency-preference";
 import { productHref } from "@/lib/proxy-links";
+import { useErrorToast } from "@/lib/toast";
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 const categoryAliases = {
   "discount proxy panel": ["proxy management"],
@@ -34,6 +35,7 @@ export function ProductCatalogPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  useErrorToast(loadError);
   const [currency] = useCurrencyPreference();
   useEffect(() => {
     const requestedCategory = new URLSearchParams(window.location.search).get("category");

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { toast, useErrorToast } from "@/lib/toast";
 
 const RESEND_AFTER = 60; // seconds; the server also allows only 3 codes a minute
 
@@ -11,6 +12,7 @@ export function EmailOtpStep({ email, onDone, onBack }) {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  useErrorToast(message);
   const [sentAt, setSentAt] = useState(() => Date.now());
   const [now, setNow] = useState(() => Date.now());
   const wait = Math.max(0, RESEND_AFTER - Math.floor((now - sentAt) / 1000));
@@ -48,7 +50,7 @@ export function EmailOtpStep({ email, onDone, onBack }) {
       setSentAt(Date.now());
       setNow(Date.now());
       setCode("");
-      setMessage("A new code is on its way.");
+      toast.success("A new code is on its way.");
     } catch (error) {
       setMessage(error.message || "Could not reach the account server.");
     } finally {
@@ -70,7 +72,6 @@ export function EmailOtpStep({ email, onDone, onBack }) {
         <button type="button" onClick={resend} disabled={busy || wait > 0}>{wait > 0 ? `Send a new code in ${wait}s` : "Send a new code"}</button>
         <button type="button" onClick={onBack} disabled={busy}>Use another email</button>
       </div>
-      {message && <p className="auth-message" role="status">{message}</p>}
     </div>
   );
 }

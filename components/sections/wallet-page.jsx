@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useErrorToast } from "@/lib/toast";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -32,6 +33,7 @@ export function WalletPage() {
   const [amount, setAmount] = useState("1000");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  useErrorToast(error);
   const [notice, setNotice] = useState("");
 
   // Reads the wallet; the caller applies the result (null = signed out).
@@ -147,7 +149,7 @@ export function WalletPage() {
               <p><span>Added to your wallet</span><strong className="wallet-credit">{amountError ? "—" : money(totalUsd, "USD")}</strong></p>
               {!amountError && <small>{currency === "BDT" ? `${money(value, "BDT")} ÷ ${rate} = ${money(creditUsd, "USD")}` : `≈ ${money(Math.round(value * rate * 100) / 100, "BDT")} at 1 USD = ৳${rate}`}</small>}
             </div>
-            {(error || amountError) && <p className="admin-image-error" role="alert">{error || amountError}</p>}
+            {amountError && <p className="admin-image-error" role="alert">{amountError}</p>}
             <button className="auth-submit" type="submit" disabled={busy || Boolean(amountError) || !methodReady}>{!methodReady ? `${currency} recharge is not available right now` : busy ? "Taking you to the payment page…" : `Recharge with ${currency === "BDT" ? "ZiniPay" : "Cryptomus"}`}</button>
             <p className="wallet-fine-print">Minimum {money(wallet.minTopup.BDT, "BDT")} ({money(wallet.minTopup.USD, "USD")}). No fee on recharge; the {currency === "BDT" ? "taka" : "dollar"} amount you pay is added in USD{bonusRule?.percent > 0 ? `, plus ${bonusRule.percent}% extra from ${money(bonusRule.threshold.BDT, "BDT")} (${money(bonusRule.threshold.USD, "USD")})` : ""}. The 5% service fee applies when you buy.</p>
           </form>

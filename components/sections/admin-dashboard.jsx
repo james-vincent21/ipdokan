@@ -8,6 +8,7 @@ import { SupplierImport, SupplierOrderActions, SupplierPlanBrowser, SupplierVari
 import { AdminWalletCredit } from "./admin-wallet-credit";
 import { AdminDevMode } from "./admin-dev-mode";
 import { OrderFilterBar, buildRevenueChart, defaultOrderFilter, filterOrders, isFilterActive, summarizeOrders, variantOptions } from "./admin-order-filter";
+import { useErrorToast } from "@/lib/toast";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 const tabs = ["Overview", "Products", "Orders", "Users", "Reviews", "Product history", "Admins"];
@@ -34,12 +35,14 @@ export function AdminDashboard() {
   const [stockVariantId, setStockVariantId] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  useErrorToast(error && error.includes("Admin access is not configured") ? `${error} Add this account email to ADMIN_EMAILS in the backend environment, then restart the API.` : error);
   const [loading, setLoading] = useState(true);
   const [orderFilter, setOrderFilter] = useState(defaultOrderFilter);
   const [chartCurrency, setChartCurrency] = useState("USD");
   const [locationOptions, rememberLocations] = useSupplierLocations();
   const [imageUploading, setImageUploading] = useState(false);
   const [imageError, setImageError] = useState("");
+  useErrorToast(imageError);
   const isApiProduct = product.source === "myproxyapi";
   const filteredOrders = useMemo(() => filterOrders(orders, orderFilter), [orders, orderFilter]);
   const orderSummary = useMemo(() => summarizeOrders(filteredOrders), [filteredOrders]);
@@ -251,7 +254,6 @@ export function AdminDashboard() {
     <div className={`admin-shell${tab === "Overview" || tab === "Orders" ? " is-wide" : ""}`}>
       <header className="admin-heading"><div><span className="auth-kicker">IP DOKAN CONTROL ROOM</span><h1>Admin panel</h1><p>Manage your catalog, inventory codes, users, and orders.</p></div><button type="button" className="admin-refresh" onClick={() => refresh(true)}>Refresh</button></header>
       <nav className="admin-tabs" aria-label="Admin sections">{tabs.map((item) => <button key={item} type="button" className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>{item}</button>)}</nav>
-      {error && <p className="admin-notice is-error" role="alert">{error}{error.includes("Admin access is not configured") && <span> Add this account email to ADMIN_EMAILS in the backend environment, then restart the API.</span>}</p>}
       {message && <p className="admin-notice" role="status">{message}</p>}
       {loading ? <p className="admin-loading">Loading admin data…</p> : error && !data.stats ? <p className="admin-loading">Sign in with an authorized admin account to continue.</p> : <>
         {tab === "Overview" && <><AdminDevMode api={api} />
@@ -277,7 +279,6 @@ export function AdminDashboard() {
                   <small className="admin-help-text">JPG, PNG, WebP, GIF or AVIF, up to 5 MB.</small>
                 </div>
               </div>
-              {imageError && <p className="admin-image-error" role="alert">{imageError}</p>}
               <label>Or paste an image URL<input type="url" placeholder="https://…" value={product.imageUrl} onChange={(event) => setProduct({ ...product, imageUrl: event.target.value })} /></label>
             </div>
             <label>Brand / provider <span className="admin-help-text">Products with the same brand appear together, for example 9proxy.</span><input placeholder="9proxy" value={product.brand} onChange={(event) => setProduct({ ...product, brand: event.target.value })} /></label>

@@ -4,6 +4,7 @@ import "@/styles/theme-dark.css";
 import { DEFAULT_THEME, THEME_SCRIPT } from "@/components/layout/theme-toggle";
 import { CardTilt } from "@/components/ui/card-tilt";
 import { DevModeBanner } from "@/components/layout/dev-mode-banner";
+import { Toaster } from "@/components/layout/toaster";
 import { PRELOADER_HEAD_SCRIPT, SitePreloader } from "@/components/layout/site-preloader";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
@@ -36,7 +37,7 @@ export default function RootLayout({ children }) {
         <script dangerouslySetInnerHTML={{ __html: PRELOADER_HEAD_SCRIPT }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA).replace(/</g, "\\u003c") }} />
       </head>
-      <body><SitePreloader /><DevModeBanner />{children}<CardTilt /></body>
+      <body><SitePreloader /><DevModeBanner />{children}<CardTilt /><Toaster /></body>
     </html>
   );
 }

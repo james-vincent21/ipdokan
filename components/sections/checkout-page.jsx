@@ -6,6 +6,7 @@ import { Icon } from "@/components/ui/icons";
 import { useCurrencyPreference } from "@/lib/currency-preference";
 import { DEFAULT_SERVICE_FEE_PERCENT, sumWithServiceFee, withServiceFee } from "@/lib/service-fee";
 import { onCartChange, readCart, writeCart } from "@/lib/cart-store";
+import { useErrorToast } from "@/lib/toast";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -75,6 +76,7 @@ export function CheckoutPage() {
   const [message, setMessage] = useState("");
   const [deliveredOrders, setDeliveredOrders] = useState([]);
   const [error, setError] = useState("");
+  useErrorToast(error, error.includes("Sign in") ? { href: "/sign-in", label: "Go to sign in" } : null);
   const [reviews, setReviews] = useState([]);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
@@ -407,7 +409,6 @@ export function CheckoutPage() {
     {chooser && <PaymentChooser methods={hostedMethods} amounts={chooserAmounts(chooser)} feePercent={serviceFeePercent} walletBalance={walletBalance} busy={busy} onClose={() => setChooser("")} onChoose={(method) => (chooser === "product" ? purchaseProduct(method) : placeOrders(method))} />}
     <div className="checkout-shell">
       <header className="checkout-heading"><span className="auth-kicker">IP DOKAN STORE</span><h1>{isProductPage ? "Product details" : "Checkout"}</h1><p>{isProductPage ? "Review product details, choose a plan, and add your quantity." : "Review your cart and place the order."}</p></header>
-      {error && <p className="admin-notice is-error" role="alert">{error}{error.includes("Sign in") && <> <a href="/sign-in">Go to sign in</a></>}</p>}
       {message && <p className="admin-notice" role="status">{message}</p>}
       {deliveredOrders.length > 0 && <section className="admin-card checkout-delivery-card" aria-label="Delivered secret codes and invoices"><h2>Payment complete — your secret code and invoice</h2>{deliveredOrders.map((order) => <article key={order.id}><strong>{order.productName}{order.variantName ? ` — ${order.variantName}` : ""}</strong>{order.deliveredCodes.map((code) => <code className="delivered-code" key={code}>{code}</code>)}<p>Invoice ID: {order.invoiceId}</p><button type="button" className="invoice-download" onClick={() => { if (!downloadInvoicePdf(order, { name: order.userName, email: order.userEmail })) setError("Allow pop-ups to download your invoice as a PDF."); }}>Download invoice PDF</button></article>)}</section>}
       {loading ? <p className="admin-loading">Loading products…</p> : isProductPage ? selectedProduct ? <><nav className="product-breadcrumbs" aria-label="Breadcrumb"><a href="/">Home</a><span>/</span>{selectedProduct.brand && selectedProduct.brand.toLowerCase() !== selectedProduct.name.toLowerCase() ? <><a href={`/catalog?brand=${encodeURIComponent(selectedProduct.brand)}`}>{selectedProduct.brand}</a><span>/</span></> : <><a href={`/catalog?category=${encodeURIComponent(selectedProduct.category || "Other")}`}>{selectedProduct.category || "Products"}</a><span>/</span></>}<strong>{selectedProduct.name}</strong></nav><section className="product-detail-layout">

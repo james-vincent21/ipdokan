@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useErrorToast } from "@/lib/toast";
 
 // Admin-only UI for products resold from the MyProxyApi reseller API.
 export const supplierCategories = [
@@ -32,6 +33,7 @@ export function SupplierImport({ api, onDone }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  useErrorToast(error);
   async function runImport() {
     setBusy(true); setError(""); setResult(null);
     try {
@@ -47,7 +49,6 @@ export function SupplierImport({ api, onDone }) {
     <div className="admin-supplier-browser-head">
       <button type="button" className="admin-secondary" disabled={busy} onClick={runImport}>{busy ? "Syncing… (about a minute)" : "Sync now"}</button>
     </div>
-    {error && <p className="admin-notice is-error">{error}</p>}
     {result && <ul className="admin-supplier-summary">{result.map((item) => <li key={item.category}>{item.error ? <span className="admin-supplier-error">{item.category}: {item.error}</span> : <>{item.product}: {item.created ? "created" : "updated"}, {item.added} new plan(s), {item.total} total</>}</li>)}</ul>}
   </section>;
 }
@@ -59,6 +60,7 @@ export function SupplierPlanBrowser({ api, onUsePlan }) {
   const [rawPlans, setRawPlans] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  useErrorToast(error);
 
   async function load(slug = category) {
     setLoading(true); setError("");
@@ -80,7 +82,6 @@ export function SupplierPlanBrowser({ api, onUsePlan }) {
     {status && (status.configured
       ? status.error ? <p className="admin-notice is-error">Supplier: {status.error}</p> : <p className="admin-supplier-balance">Deposit balance: <b>{status.currency} {Number(status.balance).toFixed(2)}</b>{status.discount ? ` · Discount ${status.discount}` : ""}</p>
       : <p className="admin-notice is-error">MyProxyApi is not configured. Add MYPROXYAPI_USERNAME and MYPROXYAPI_SECRET to .env, then restart the API.</p>)}
-    {error && <p className="admin-notice is-error">{error}</p>}
     {plans && <>
       <p className="admin-help-text">Plans are added under <b>{storeCategory}</b>. Click “Use” to add a plan, then set its display name, period, location and price.</p>
       <div className="admin-supplier-plans">{plans.map((plan) => <article key={`${plan.id}`} className="admin-supplier-plan">

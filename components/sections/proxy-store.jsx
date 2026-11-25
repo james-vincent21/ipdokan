@@ -6,6 +6,7 @@ import { useCurrencyPreference } from "@/lib/currency-preference";
 import { DEFAULT_SERVICE_FEE_PERCENT, withServiceFee } from "@/lib/service-fee";
 import { Icon } from "@/components/ui/icons";
 import { readCart, writeCart } from "@/lib/cart-store";
+import { useErrorToast } from "@/lib/toast";
 
 // Proxy store: type → plan → country → area → provider → buy.
 // Data comes from /api/proxies (selling prices only; a price of 0 means "contact admin").
@@ -39,6 +40,7 @@ export function ProxyStore() {
   const [maxQuantity, setMaxQuantity] = useState(10);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  useErrorToast(loadError);
   const [typeSlug, setTypeSlug] = useState("");
   const [planId, setPlanId] = useState("");
   const [countryCode, setCountryCode] = useState("");

@@ -11,6 +11,7 @@ import { productHref } from "@/lib/proxy-links";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { EmailOtpStep, needsEmailCode } from "@/components/ui/email-otp-step";
 import { cartCount, onCartChange, readCart } from "@/lib/cart-store";
+import { useErrorToast } from "@/lib/toast";
 
 // The signed-in user's photo (from their Google account), or their first letter when there is none
 // or it fails to load. Google photos are loaded without a referrer, which Google requires.
@@ -67,9 +68,11 @@ export function SiteHeader() {
   const [searchProducts, setSearchProducts] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState("");
+  useErrorToast(searchError);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState("signin");
   const [authMessage, setAuthMessage] = useState("");
+  useErrorToast(authMessage);
   const [authBusy, setAuthBusy] = useState(false);
   // Email waiting for its 6-digit code after sign-up (or sign-in to an unverified account).
   const [authCodeEmail, setAuthCodeEmail] = useState("");
@@ -367,6 +370,8 @@ export function SiteHeader() {
           <h2 id="auth-title">{authCodeEmail ? "Check your email" : authMode === "signup" ? "Create your account" : "Welcome back"}</h2>
           {authCodeEmail ? <EmailOtpStep email={authCodeEmail} onDone={afterAuth} onBack={() => { setAuthCodeEmail(""); setAuthMessage(""); }} /> : <>
           <p className="auth-description">Sign in or create an account to continue.</p>
+          <button className="auth-google" type="button" disabled={authBusy} onClick={signInWithGoogle}><svg className="google-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11a9.4 9.4 0 0 1-4.1 6.2v5.1h6.6c3.9-3.6 6.1-8.8 6.1-15Z"/><path fill="#34A853" d="M24 44c5.5 0 10.2-1.8 13.6-4.9L31 34c-1.8 1.2-4.1 2-7 2-5.3 0-9.8-3.6-11.4-8.4H5.8v5.3A20 20 0 0 0 24 44Z"/><path fill="#FBBC05" d="M12.6 27.6a12 12 0 0 1 0-7.2v-5.3H5.8a20 20 0 0 0 0 17.8l6.8-5.3Z"/><path fill="#EA4335" d="M24 11.9c3 0 5.7 1 7.8 3.1l5.9-5.9A19.8 19.8 0 0 0 24 4 20 20 0 0 0 5.8 15.1l6.8 5.3c1.6-4.9 6.1-8.5 11.4-8.5Z"/></svg>Continue with Google</button>
+          <div className="auth-divider"><span>or use email</span></div>
           <div className="auth-mode-switch" role="tablist" aria-label="Account action">
             <button type="button" role="tab" aria-selected={authMode === "signin"} className={authMode === "signin" ? "is-active" : ""} onClick={() => { setAuthMode("signin"); setAuthMessage(""); }}>Sign in</button>
             <button type="button" role="tab" aria-selected={authMode === "signup"} className={authMode === "signup" ? "is-active" : ""} onClick={() => { setAuthMode("signup"); setAuthMessage(""); }}>Sign up</button>
@@ -377,9 +382,6 @@ export function SiteHeader() {
             <label>Password<input type="password" name="password" autoComplete={authMode === "signup" ? "new-password" : "current-password"} placeholder="Enter your password" minLength={authMode === "signup" ? 10 : undefined} maxLength={128} required /></label>
             <button className="auth-submit" type="submit" disabled={authBusy}>{authBusy ? "Please wait…" : authMode === "signup" ? "Create account" : "Sign in"}</button>
           </form>
-          <div className="auth-divider"><span>or</span></div>
-          <button className="auth-google" type="button" disabled={authBusy} onClick={signInWithGoogle}><svg className="google-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11a9.4 9.4 0 0 1-4.1 6.2v5.1h6.6c3.9-3.6 6.1-8.8 6.1-15Z"/><path fill="#34A853" d="M24 44c5.5 0 10.2-1.8 13.6-4.9L31 34c-1.8 1.2-4.1 2-7 2-5.3 0-9.8-3.6-11.4-8.4H5.8v5.3A20 20 0 0 0 24 44Z"/><path fill="#FBBC05" d="M12.6 27.6a12 12 0 0 1 0-7.2v-5.3H5.8a20 20 0 0 0 0 17.8l6.8-5.3Z"/><path fill="#EA4335" d="M24 11.9c3 0 5.7 1 7.8 3.1l5.9-5.9A19.8 19.8 0 0 0 24 4 20 20 0 0 0 5.8 15.1l6.8 5.3c1.6-4.9 6.1-8.5 11.4-8.5Z"/></svg>Continue with Google</button>
-          {authMessage && <p className="auth-message" role="status">{authMessage}</p>}
           </>}
         </section>
       </div>

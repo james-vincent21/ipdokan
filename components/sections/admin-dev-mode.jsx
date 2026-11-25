@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { DEV_MODE_CHANGED } from "@/components/layout/dev-mode-banner";
+import { useErrorToast } from "@/lib/toast";
 
 // Admin switch for dev mode: while on, every page shows a large "Site under maintenance" banner.
 export function AdminDevMode({ api }) {
@@ -9,6 +10,7 @@ export function AdminDevMode({ api }) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  useErrorToast(error);
 
   useEffect(() => {
     let active = true;
@@ -42,6 +44,5 @@ export function AdminDevMode({ api }) {
       <label>Extra message on the banner (optional)<input maxLength={300} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="e.g. Payments are paused until 6 PM" /></label>
       {on && <button type="submit" className="admin-secondary" disabled={busy}>Update message</button>}
     </form>
-    {error && <p className="admin-notice is-error" role="alert">{error}</p>}
   </section>;
 }

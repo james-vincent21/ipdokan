@@ -1,6 +1,7 @@
 "use client";
 
 import { useImperativeHandle, useState } from "react";
+import { useErrorToast } from "@/lib/toast";
 
 const usd = (amount) => `$${Number(amount || 0).toFixed(2)}`;
 
@@ -16,6 +17,7 @@ export function AdminWalletCredit({ api, onCredited, ref }) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  useErrorToast(error);
   const [message, setMessage] = useState("");
 
   async function lookupId(id) {
@@ -69,7 +71,6 @@ export function AdminWalletCredit({ api, onCredited, ref }) {
       <label>User id, name or email<input required value={query} onChange={(event) => setQuery(event.target.value)} placeholder="e.g. rahim, rahim@gmail.com or a user id" spellCheck={false} /></label>
       <button type="submit" className="auth-submit" disabled={busy}>{busy && !found ? "Searching…" : "Find user"}</button>
     </form>
-    {error && <p className="admin-notice is-error" role="alert">{error}</p>}
     {message && <p className="admin-notice" role="status">{message}</p>}
     {results && <ul className="admin-credit-results" aria-label="Matching users">{results.map((user) => <li key={user.id}>
       <button type="button" onClick={() => { setFound(user); setResults(null); setMessage(""); }}><strong>{user.name || "—"} · {user.email}</strong><small>{user.id} · Balance {usd(user.walletBalanceUsd)}{user.banned ? " · Banned" : ""}</small></button>
