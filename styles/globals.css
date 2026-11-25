@@ -1617,3 +1617,23 @@ html[data-theme="light"] .admin-telegram-tag { color: #0369a1 !important; }
 .footer-protected-logo svg { width: 16px; height: 16px; }
 html[data-theme="light"] .footer-protected-label { color: #6b7280; }
 html[data-theme="light"] .footer-protected-badge { border-color: #dce2ec; background: #fff; color: #1f2937; }
+
+/* Footer bottom on phones/tablets: line every row up on the left (copyright, credit, Protected-by badges
+   and the payment/Binance row), and shrink the Binance badge so it is not oversized on small screens. */
+@media (max-width: 970px) {
+  .footer-bottom { gap: 14px; }
+  .footer-bottom-actions { align-self: flex-start; flex-wrap: wrap; gap: 10px 12px; }
+  .footer-protected { gap: 7px 8px; }
+}
+@media (max-width: 560px) {
+  .footer-zinipay { width: 116px; height: 32px; }
+  .footer-binance { min-height: 34px; gap: 5px; padding: 3px 8px; }
+  .footer-binance svg { width: 17px; height: 17px; flex-basis: 17px; }
+  .footer-binance strong { font-size: 8.5px; letter-spacing: .06em; }
+  .footer-binance small { font-size: 8px; }
+  .footer-back-top { width: 36px; height: 36px; flex-basis: 36px; }
+  .footer-protected-label { font-size: 10px; }
+  .footer-protected-badge { padding: 4px 10px 4px 5px; font-size: 11px; }
+  .footer-protected-logo { width: 20px; height: 20px; flex-basis: 20px; }
+  .footer-protected-logo svg { width: 14px; height: 14px; }
+}
