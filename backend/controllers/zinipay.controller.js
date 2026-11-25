@@ -3,6 +3,8 @@ import { randomBytes } from "node:crypto";
 import { Order } from "../models/order.model.js";
 import { config } from "../config/env.js";
 import { fulfillPaidOrder, PENDING_ORDER_EXPIRY_MS } from "./store.controller.js";
+import { WalletTransaction } from "../models/wallet.model.js";
+import { WalletError, completeTopup, failTopup } from "../lib/wallet.js";
 
 class ZinipayError extends Error {}
 
@@ -139,7 +141,12 @@ export async function zinipayWebhook(req, res) {
     const invoiceId = typeof input.invoice_id === "string" ? input.invoice_id.trim() : "";
     let order = valId ? await Order.findOne({ zinipayValId: valId }, { zinipayValId: 1 }).lean() : null;
     if (!order && invoiceId) order = await Order.findOne({ zinipayInvoiceId: invoiceId }, { zinipayValId: 1 }).lean();
-    if (!order?.zinipayValId) return res.status(404).json({ error: "Unknown ZiniPay invoice." });
+    if (!order?.zinipayValId) {
+      // Not an order: it may be a wallet top-up.
+      const topup = valId ? await WalletTransaction.findOne({ zinipayValId: valId }) : invoiceId ? await WalletTransaction.findOne({ zinipayInvoiceId: invoiceId }) : null;
+      if (topup) return res.json({ received: true, status: await settleZinipayTopup(topup, invoiceId) });
+      return res.status(404).json({ error: "Unknown ZiniPay invoice." });
+    }
     const status = await settleZinipayPayment(order.zinipayValId, invoiceId);
     res.json({ received: true, status });
   } catch (error) {
@@ -163,4 +170,56 @@ export async function confirmZinipayPayment(req, res, next) {
     const updated = await Order.find({ _id: { $in: orderIds }, userId: req.user.id }, { status: 1 }).lean();
     res.json({ orders: updated.map((order) => ({ id: String(order._id), status: order.status })) });
   } catch (error) { next(error); }
+}
+
+// ----- Wallet top-ups (paid in BDT) -----
+
+// Creates the ZiniPay invoice for a pending top-up and returns the payment page URL.
+export async function startZinipayTopup(transaction, user) {
+  if (!config.zinipayApiKey) throw new WalletError("ZiniPay is not configured on the server.", 503);
+  const valId = `IPW${Date.now().toString(36).toUpperCase()}${randomBytes(4).toString("hex").toUpperCase()}`;
+  await WalletTransaction.updateOne({ _id: transaction._id }, { $set: { zinipayValId: valId } });
+  const back = `${config.frontendOrigin}/wallet?topup=${transaction._id}`;
+  try {
+    const result = await zinipayRequest("/v1/payment/create", {
+      cus_name: user.name || user.email || "Customer",
+      cus_email: user.email || "",
+      amount: transaction.paidAmount,
+      metadata: { wallet_topup: String(transaction._id), user_id: String(user.id) },
+      redirect_url: `${back}&payment=zinipay`,
+      cancel_url: `${back}&payment=cancelled`,
+      val_id: valId,
+      webhook_url: `${config.authUrl}/api/payments/zinipay/webhook`,
+    });
+    if (!result?.status || typeof result.payment_url !== "string") throw new ZinipayError(result?.message || "ZiniPay did not return a payment URL.");
+    await WalletTransaction.updateOne({ _id: transaction._id }, { $set: { zinipayInvoiceId: invoiceIdFromPaymentUrl(result.payment_url) } });
+    console.log(`ZiniPay wallet top-up created: val_id=${valId} amount=${transaction.paidAmount} BDT topup=${transaction._id}`);
+    return result.payment_url;
+  } catch (error) {
+    if (!(error instanceof ZinipayError)) throw error;
+    console.error("ZiniPay top-up invoice failed:", error.message);
+    await failTopup(transaction._id, "Could not start the ZiniPay payment.");
+    throw new WalletError("Could not start the ZiniPay payment. Please try again.", 502);
+  }
+}
+
+// Checks the top-up with ZiniPay and credits the wallet once the full amount is paid.
+export async function settleZinipayTopup(transaction, extraInvoiceId = "") {
+  if (transaction.status !== "pending") return transaction.status;
+  const result = await verifyWithZinipay(transaction.zinipayValId, [transaction.zinipayInvoiceId, transaction.zinipayValId, extraInvoiceId]);
+  const status = String(result?.status || "PENDING").toUpperCase();
+  if (["FAILED", "CANCELLED", "CANCELED", "EXPIRED"].includes(status)) {
+    await failTopup(transaction._id, `ZiniPay status: ${status}`);
+    return "failed";
+  }
+  if (status !== "COMPLETED") return "pending";
+  if (String(result.val_id || "") !== transaction.zinipayValId || !(Number(result.amount) + 0.009 >= transaction.paidAmount)) {
+    console.error(`ZiniPay top-up mismatch for ${transaction._id}: val_id=${result.val_id} amount=${result.amount}, expected ${transaction.zinipayValId} / ${transaction.paidAmount} BDT`);
+    return "pending";
+  }
+  await completeTopup(transaction._id, {
+    zinipayTransactionId: String(result.transaction_id || ""),
+    ...(result.invoice_id ? { zinipayInvoiceId: String(result.invoice_id) } : {}),
+  });
+  return "completed";
 }

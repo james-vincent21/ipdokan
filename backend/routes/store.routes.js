@@ -3,6 +3,7 @@ import { optionalAuth, requireAuth } from "../middleware/auth.middleware.js";
 import { confirmZinipayPayment, createZinipayInvoice } from "../controllers/zinipay.controller.js";
 import { confirmCryptomusPayment, createCryptomusInvoice } from "../controllers/cryptomus.controller.js";
 import { listProxyStore } from "../controllers/supplier.controller.js";
+import { confirmTopup, createTopup, getWallet, payWithWallet } from "../controllers/wallet.controller.js";
 import { addProductReview, completeDemoPayment, createOrder, createStripeCheckout, listMyOrders, listProductReviews, listProducts, paymentMode, toggleProductReviewLike } from "../controllers/store.controller.js";
 
 const router = Router();
@@ -21,4 +22,8 @@ router.post("/payments/zinipay/create", requireAuth, createZinipayInvoice);
 router.post("/payments/zinipay/confirm", requireAuth, confirmZinipayPayment);
 router.post("/payments/cryptomus/create", requireAuth, createCryptomusInvoice);
 router.post("/payments/cryptomus/confirm", requireAuth, confirmCryptomusPayment);
+router.post("/payments/wallet/create", requireAuth, payWithWallet);
+router.get("/wallet", requireAuth, getWallet);
+router.post("/wallet/topups", requireAuth, createTopup);
+router.post("/wallet/topups/:id/confirm", requireAuth, confirmTopup);
 export default router;

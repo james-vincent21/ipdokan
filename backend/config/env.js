@@ -33,6 +33,10 @@ if (authEnabled && (!mongoUri || !betterAuthSecret || betterAuthSecret.length < 
 const serviceFeePercent = process.env.SERVICE_FEE_PERCENT === undefined || process.env.SERVICE_FEE_PERCENT === "" ? 5 : Number(process.env.SERVICE_FEE_PERCENT);
 if (!Number.isFinite(serviceFeePercent) || serviceFeePercent < 0 || serviceFeePercent > 50) throw new Error("SERVICE_FEE_PERCENT must be a number from 0 to 50.");
 
+// Wallet: one balance in USD. BDT top-ups are converted at this rate (taka per 1 USD).
+const walletBdtPerUsd = process.env.WALLET_BDT_PER_USD === undefined || process.env.WALLET_BDT_PER_USD === "" ? 135 : Number(process.env.WALLET_BDT_PER_USD);
+if (!Number.isFinite(walletBdtPerUsd) || walletBdtPerUsd < 50 || walletBdtPerUsd > 500) throw new Error("WALLET_BDT_PER_USD must be a number from 50 to 500.");
+
 const frontendOrigin = process.env.FRONTEND_ORIGIN || "http://localhost:3000";
 const authUrl = process.env.BETTER_AUTH_URL || "http://localhost:4000";
 const demoAdminEnabled = process.env.DEMO_ADMIN_ENABLED === "true";
@@ -45,6 +49,11 @@ export const config = {
   port: Number(process.env.API_PORT || 4000),
   frontendOrigin,
   serviceFeePercent,
+  wallet: {
+    bdtPerUsd: walletBdtPerUsd,
+    minTopup: { USD: 10, BDT: 1000 },
+    maxTopup: { USD: 5000, BDT: 500000 },
+  },
   authEnabled,
   mongoUri,
   mongoDatabase: process.env.MONGODB_DATABASE || "ipdokan",

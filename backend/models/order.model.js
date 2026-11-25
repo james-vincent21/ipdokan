@@ -19,7 +19,9 @@ const orderSchema = new mongoose.Schema({
   quantity: { type: Number, required: true, min: 1, default: 1 },
   stripeCheckoutSessionId: { type: String, default: "", index: true },
   paymentIntentId: { type: String, default: "" },
-  paymentMethod: { type: String, enum: ["", "stripe", "demo", "zinipay", "cryptomus"], default: "" },
+  paymentMethod: { type: String, enum: ["", "stripe", "demo", "zinipay", "cryptomus", "wallet"], default: "" },
+  // Set when the order is claimed for a wallet payment, so it cannot be paid from the wallet twice.
+  walletTransactionId: { type: String, default: "", index: true },
   paymentReference: { type: String, default: "" },
   // ZiniPay: one val_id is shared by every order paid in the same checkout.
   zinipayValId: { type: String, default: "", index: true },

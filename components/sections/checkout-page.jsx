@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { downloadInvoicePdf } from "@/lib/invoice-download";
+import { Icon } from "@/components/ui/icons";
 import { useCurrencyPreference } from "@/lib/currency-preference";
 import { DEFAULT_SERVICE_FEE_PERCENT, sumWithServiceFee, withServiceFee } from "@/lib/service-fee";
 
@@ -12,15 +13,18 @@ const cartKey = "ipdokan-cart-v1";
 const paymentMethodInfo = {
   zinipay: { label: "Pay with ZiniPay", detail: "bKash, Nagad, Rocket, Upay & more", currency: "BDT" },
   cryptomus: { label: "Pay with Cryptomus", detail: "USDT, BTC, ETH & other crypto", currency: "USD" },
+  // Paid instantly from the customer's USD wallet balance.
+  wallet: { label: "Pay from wallet", detail: "Use your IP DOKAN balance", currency: "USD" },
 };
 
 function PaymentLogo({ method }) {
+  if (method === "wallet") return <span className="pay-option-logo is-wallet" aria-hidden="true"><Icon name="wallet" /></span>;
   if (method === "zinipay") return <img className="pay-option-logo is-wallets" src="/zinipay-1.webp" alt="bKash, Nagad, Rocket, Upay and other wallets" />;
   return <span className="pay-option-logo is-crypto" aria-hidden="true"><i className="coin-usdt">₮</i><i className="coin-btc">₿</i><i className="coin-eth">Ξ</i></span>;
 }
 
 // Shown after "Buy now" / "Place order": the customer picks a gateway and sees the exact amount for each.
-function PaymentChooser({ methods, amounts, feePercent, busy, onChoose, onClose }) {
+function PaymentChooser({ methods, amounts, feePercent, walletBalance, busy, onChoose, onClose }) {
   useEffect(() => {
     const onKey = (event) => { if (event.key === "Escape" && !busy) onClose(); };
     window.addEventListener("keydown", onKey);
@@ -36,9 +40,13 @@ function PaymentChooser({ methods, amounts, feePercent, busy, onChoose, onClose 
         {methods.map((method) => {
           const info = paymentMethodInfo[method];
           const amount = amounts[info.currency] || 0;
-          return <button type="button" key={method} className="pay-option" disabled={busy || !(amount > 0)} onClick={() => onChoose(method)}>
+          // walletBalance: a number, "signed-out", or null while it loads.
+          const walletShort = method === "wallet" && (typeof walletBalance !== "number" || walletBalance + 0.0001 < amount);
+          return <button type="button" key={method} className="pay-option" disabled={busy || !(amount > 0) || walletShort} onClick={() => onChoose(method)}>
             <PaymentLogo method={method} />
-            <span className="pay-option-text"><strong>{info.label}</strong><small>{info.detail}</small></span>
+            <span className="pay-option-text"><strong>{info.label}</strong><small>{info.detail}</small>
+              {method === "wallet" && <span className="pay-option-balance">{walletBalance === "signed-out" ? <>Sign in to use your wallet</> : typeof walletBalance !== "number" ? "Checking balance…" : <>Balance {formatPrice(walletBalance, "USD")}{walletShort && <> · not enough · <a href="/wallet" onClick={(event) => event.stopPropagation()}>Recharge</a></>}</>}</span>}
+            </span>
             <span className="pay-option-amount">{amount > 0 ? formatPrice(amount, info.currency) : `Not available in ${info.currency}`}</span>
           </button>;
         })}
@@ -77,7 +85,18 @@ export function CheckoutPage() {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [chooser, setChooser] = useState("");
   const [serviceFeePercent, setServiceFeePercent] = useState(DEFAULT_SERVICE_FEE_PERCENT);
+  const [walletBalance, setWalletBalance] = useState(null);
   const hostedMethods = paymentMethods.filter((method) => method in paymentMethodInfo);
+
+  // The wallet balance is read each time the payment chooser opens, so a fresh recharge shows up.
+  useEffect(() => {
+    if (!chooser || !paymentMethods.includes("wallet")) return;
+    let active = true;
+    fetch(`${apiUrl}/api/wallet`, { credentials: "include", cache: "no-store" })
+      .then(async (response) => { const result = await response.json().catch(() => ({})); if (active) setWalletBalance(response.status === 401 ? "signed-out" : response.ok ? result.balanceUsd : null); })
+      .catch(() => { if (active) setWalletBalance(null); });
+    return () => { active = false; };
+  }, [chooser, paymentMethods]);
 
   useEffect(() => {
     const pathProductId = window.location.pathname.match(/^\/product\/([^/]+)/)?.[1] || "";
@@ -304,7 +323,7 @@ export function CheckoutPage() {
         body: JSON.stringify({ orderIds }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || `Could not start the ${paymentMethodInfo[method].label.replace("Pay with ", "")} payment.`);
+      if (!response.ok) throw new Error(result.error || `Could not start the ${paymentMethodInfo[method].label.replace(/^Pay (with|from) /, "")} payment.`);
       window.location.assign(result.url);
       return true;
     }
@@ -386,7 +405,7 @@ export function CheckoutPage() {
   }
 
   return <main className="checkout-page">
-    {chooser && <PaymentChooser methods={hostedMethods} amounts={chooserAmounts(chooser)} feePercent={serviceFeePercent} busy={busy} onClose={() => setChooser("")} onChoose={(method) => (chooser === "product" ? purchaseProduct(method) : placeOrders(method))} />}
+    {chooser && <PaymentChooser methods={hostedMethods} amounts={chooserAmounts(chooser)} feePercent={serviceFeePercent} walletBalance={walletBalance} busy={busy} onClose={() => setChooser("")} onChoose={(method) => (chooser === "product" ? purchaseProduct(method) : placeOrders(method))} />}
     <div className="checkout-shell">
       <header className="checkout-heading"><span className="auth-kicker">IP DOKAN STORE</span><h1>{isProductPage ? "Product details" : "Checkout"}</h1><p>{isProductPage ? "Review product details, choose a plan, and add your quantity." : "Review your cart and place the order."}</p></header>
       {error && <p className="admin-notice is-error" role="alert">{error}{error.includes("Sign in") && <> <a href="/sign-in">Go to sign in</a></>}</p>}
@@ -456,7 +475,7 @@ export function CheckoutPage() {
             <p className="checkout-total-due"><span>Total ({currency})</span><strong>{formatPrice(charge.total, currency)}</strong></p>
           </div>)}</div>
           <button className="auth-submit checkout-submit" type="button" disabled={busy} onClick={() => startPurchase("cart")}>{busy ? "Placing order…" : "Place order"}</button>
-          <p className="checkout-payment-note">{paymentMode === "demo" ? "Demo mode completes the purchase without charging a real payment method." : hostedMethods.length ? `Next, choose how to pay: ${hostedMethods.map((method) => paymentMethodInfo[method].label.replace("Pay with ", "")).join(" or ")}. Codes are delivered as soon as the payment is confirmed.` : "Placing an order reserves inventory. Codes are delivered after Stripe confirms payment."}</p></>
+          <p className="checkout-payment-note">{paymentMode === "demo" ? "Demo mode completes the purchase without charging a real payment method." : hostedMethods.length ? `Next, choose how to pay: ${hostedMethods.map((method) => paymentMethodInfo[method].label.replace(/^Pay (with|from) /, "")).join(" or ")}. Codes are delivered as soon as the payment is confirmed.` : "Placing an order reserves inventory. Codes are delivered after Stripe confirms payment."}</p></>
           : <p className="checkout-empty">Your cart is empty. Choose a product and add a quantity to continue.</p>}
         </section>
       </div>}

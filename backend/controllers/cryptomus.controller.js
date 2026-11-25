@@ -3,6 +3,8 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { Order } from "../models/order.model.js";
 import { config } from "../config/env.js";
 import { fulfillPaidOrder, PENDING_ORDER_EXPIRY_MS } from "./store.controller.js";
+import { WalletTransaction } from "../models/wallet.model.js";
+import { WalletError, completeTopup, failTopup } from "../lib/wallet.js";
 
 // Docs: https://doc.cryptomus.com/merchant-api
 const CRYPTOMUS_API = "https://api.cryptomus.com";
@@ -144,7 +146,13 @@ export async function cryptomusWebhook(req, res) {
     // The status is always re-checked with Cryptomus below, so a bad signature is logged rather than trusted.
     if (!webhookSignatureValid(body)) console.warn(`Cryptomus webhook signature mismatch for order_id=${body.order_id} from ${req.ip}`);
     const cryptomusOrderId = typeof body.order_id === "string" ? body.order_id : "";
-    if (!cryptomusOrderId || !(await Order.exists({ cryptomusOrderId }))) return res.status(404).json({ error: "Unknown Cryptomus order." });
+    if (!cryptomusOrderId) return res.status(404).json({ error: "Unknown Cryptomus order." });
+    if (!(await Order.exists({ cryptomusOrderId }))) {
+      // Not an order: it may be a wallet top-up.
+      const topup = await WalletTransaction.findOne({ cryptomusOrderId });
+      if (topup) return res.json({ received: true, status: await settleCryptomusTopup(topup) });
+      return res.status(404).json({ error: "Unknown Cryptomus order." });
+    }
     const status = await settleCryptomusPayment(cryptomusOrderId);
     res.json({ received: true, status });
   } catch (error) {
@@ -167,4 +175,55 @@ export async function confirmCryptomusPayment(req, res, next) {
     const updated = await Order.find({ _id: { $in: orderIds }, userId: req.user.id }, { status: 1 }).lean();
     res.json({ orders: updated.map((order) => ({ id: String(order._id), status: order.status })) });
   } catch (error) { next(error); }
+}
+
+// ----- Wallet top-ups (paid in USD) -----
+
+// Creates the Cryptomus invoice for a pending top-up and returns the payment page URL.
+export async function startCryptomusTopup(transaction) {
+  if (!config.cryptomusEnabled) throw new WalletError("Cryptomus is not configured on the server.", 503);
+  const cryptomusOrderId = `ipw_${Date.now().toString(36)}_${randomBytes(4).toString("hex")}`;
+  await WalletTransaction.updateOne({ _id: transaction._id }, { $set: { cryptomusOrderId } });
+  const back = `${config.frontendOrigin}/wallet?topup=${transaction._id}`;
+  try {
+    const invoice = await cryptomusRequest("/v1/payment", {
+      amount: Number(transaction.paidAmount).toFixed(2),
+      currency: "USD",
+      order_id: cryptomusOrderId,
+      url_return: `${back}&payment=cancelled`,
+      url_success: `${back}&payment=cryptomus`,
+      url_callback: `${config.authUrl}/api/payments/cryptomus/webhook`,
+      lifetime: INVOICE_LIFETIME_SECONDS,
+      additional_data: `wallet:${transaction._id}`,
+    });
+    if (typeof invoice.url !== "string") throw new CryptomusError("Cryptomus did not return a payment URL.");
+    await WalletTransaction.updateOne({ _id: transaction._id }, { $set: { cryptomusUuid: String(invoice.uuid || "") } });
+    console.log(`Cryptomus wallet top-up created: order_id=${cryptomusOrderId} amount=${transaction.paidAmount} USD topup=${transaction._id}`);
+    return invoice.url;
+  } catch (error) {
+    if (!(error instanceof CryptomusError)) throw error;
+    console.error("Cryptomus top-up invoice failed:", error.message);
+    await failTopup(transaction._id, "Could not start the Cryptomus payment.");
+    throw new WalletError("Could not start the Cryptomus payment. Please try again.", 502);
+  }
+}
+
+const FAILED_STATUSES = new Set(["cancel", "fail", "system_fail", "refund_process", "refund_fail", "refund_paid", "locked"]);
+
+// Checks the top-up with Cryptomus and credits the wallet once the full amount is paid.
+export async function settleCryptomusTopup(transaction) {
+  if (transaction.status !== "pending") return transaction.status;
+  const invoice = await cryptomusRequest("/v1/payment/info", { order_id: transaction.cryptomusOrderId });
+  const status = String(invoice.payment_status || invoice.status || "").toLowerCase();
+  if (FAILED_STATUSES.has(status)) {
+    await failTopup(transaction._id, `Cryptomus status: ${status}`);
+    return "failed";
+  }
+  if (!SUCCESS_STATUSES.has(status)) return "pending";
+  if (String(invoice.order_id) !== transaction.cryptomusOrderId || String(invoice.currency).toUpperCase() !== "USD" || !(Number(invoice.amount) + 0.009 >= transaction.paidAmount)) {
+    console.error(`Cryptomus top-up mismatch for ${transaction._id}: order_id=${invoice.order_id} amount=${invoice.amount} ${invoice.currency}, expected ${transaction.paidAmount} USD`);
+    return "pending";
+  }
+  await completeTopup(transaction._id, { cryptomusTxid: String(invoice.txid || ""), ...(invoice.uuid ? { cryptomusUuid: String(invoice.uuid) } : {}) });
+  return "completed";
 }

@@ -9,6 +9,7 @@ const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 export function UserProfile() {
   const [user, setUser] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [wallet, setWallet] = useState(null);
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
   const [copiedCode, setCopiedCode] = useState("");
@@ -60,6 +61,7 @@ export function UserProfile() {
         setUser(result.user);
         setStatus("ready");
         loadOrders();
+        fetch(`${apiUrl}/api/wallet`, { credentials: "include", cache: "no-store" }).then((walletResponse) => walletResponse.ok ? walletResponse.json() : null).then((walletResult) => { if (active && walletResult) setWallet(walletResult); }).catch(() => {});
       })
       .catch((error) => { if (active) { setMessage(error.message); setStatus("error"); } });
     return () => { active = false; window.clearTimeout(retryTimer); };
@@ -91,6 +93,11 @@ export function UserProfile() {
             </div>
             <dl className="profile-stats">{stats.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
           </section>
+
+          {wallet && <section className="profile-card profile-wallet-card" aria-label="Wallet balance">
+            <div><span className="auth-kicker">WALLET BALANCE</span><strong>${Number(wallet.balanceUsd).toFixed(2)}</strong><small>≈ ৳{Number(wallet.balanceBdt).toLocaleString("en-US", { maximumFractionDigits: 2 })}</small></div>
+            <a className="auth-submit profile-wallet-link" href="/wallet">Recharge / history</a>
+          </section>}
 
           {message && <p className="profile-notice" role="status">{message}</p>}
 

@@ -490,7 +490,10 @@ export function paymentMode(_req, res) {
   // Hosted gateways the customer can choose between at checkout.
   const methods = [config.zinipayApiKey && "zinipay", config.cryptomusEnabled && "cryptomus"].filter(Boolean);
   const mode = methods[0] || (config.stripeSecretKey ? "stripe" : config.demoPaymentEnabled ? "demo" : "disabled");
-  res.json({ mode, methods: methods.length ? methods : [mode], serviceFeePercent: config.serviceFeePercent });
+  // The wallet is offered next to the hosted gateways once accounts are enabled; it is topped up through them.
+  const allMethods = methods.length ? methods : [mode];
+  if (config.authEnabled && methods.length) allMethods.push("wallet");
+  res.json({ mode, methods: allMethods, serviceFeePercent: config.serviceFeePercent, bdtPerUsd: config.wallet.bdtPerUsd });
 }
 
 export async function completeDemoPayment(req, res, next) {

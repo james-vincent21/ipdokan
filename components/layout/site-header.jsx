@@ -193,6 +193,7 @@ export function SiteHeader() {
           </div>
           <a className="nav-link" href={supportItem.href} onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name={supportItem.icon} /></span>{supportItem.label}</a>
           <a className="nav-link account-nav-link" href="/profile" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="user" /></span>Account</a>
+          <a className="nav-link wallet-nav-link" href="/wallet" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="wallet" /></span>Wallet</a>
           <a className="nav-link cart-nav-link" href="/checkout" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="cart" /></span>Cart</a>
           {isAdmin && <a className="nav-link" href="/admin" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="dashboard" /></span>Admin dashboard</a>}
           <div className="nav-actions">

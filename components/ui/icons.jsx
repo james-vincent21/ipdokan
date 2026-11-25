@@ -10,6 +10,7 @@ const paths = {
   cloud: <><path d="M7 19h10.5a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.6 9.5 4.75 4.75 0 0 0 7 19Z" /></>,
   support: <><path d="M4 13v-1a8 8 0 0 1 16 0v1" /><rect x="3" y="13" width="4.5" height="6" rx="1.5" /><rect x="16.5" y="13" width="4.5" height="6" rx="1.5" /><path d="M18.75 19v.5a2.5 2.5 0 0 1-2.5 2.5H13" /></>,
   user: <><circle cx="12" cy="8" r="4" /><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" /></>,
+  wallet: <><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18a1 1 0 0 1 1 1v2" /><path d="M4 7.5V18a1.5 1.5 0 0 0 1.5 1.5H19a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H6.5A2.5 2.5 0 0 1 4 7.5Z" /><circle cx="16" cy="14" r="1.2" /></>,
   cart: <><path d="M3 4h2.2l2.3 11.2a1.5 1.5 0 0 0 1.47 1.2h8.6a1.5 1.5 0 0 0 1.46-1.15L20.5 8H6.1" /><circle cx="9.5" cy="20" r="1.3" /><circle cx="17" cy="20" r="1.3" /></>,
   dashboard: <><rect x="3.5" y="3.5" width="7" height="9" rx="1.5" /><rect x="13.5" y="3.5" width="7" height="5" rx="1.5" /><rect x="13.5" y="11.5" width="7" height="9" rx="1.5" /><rect x="3.5" y="15.5" width="7" height="5" rx="1.5" /></>,
   chevronDown: <path d="m6 9 6 6 6-6" />,
