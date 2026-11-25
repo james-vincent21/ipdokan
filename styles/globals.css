@@ -1423,9 +1423,16 @@ html[data-theme="light"] .nav-link-highlight.is-current, html[data-theme="light"
 @keyframes notify-in { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .notify-toast { animation: none; } }
 @media (max-width: 1300px) {
-  .notify { order: 2; margin-left: auto; }
-  .notify + .nav-search-trigger { margin-left: 4px; }
+  /* Logo on the left, search in the middle, bell and menu on the right. */
+  .nav-shell > .nav-search-trigger { order: 1; margin-left: auto; margin-right: auto; }
+  .notify { order: 2; margin-left: 0; }
   .notify-button { width: 34px; height: 34px; }
+}
+/* Wide screens: the header row is full, so the wallet shows its icon and balance without the word. */
+@media (min-width: 1301px) {
+  .wallet-nav-link:has(.wallet-nav-balance) .wallet-nav-label { display: none; }
+  .wallet-nav-link .wallet-nav-balance { margin-left: 4px; }
+  .notify { margin-left: 8px; }
 }
 
 /* Loading screen (components/layout/site-preloader.jsx). Hidden once loaded (html.pl-done) or when
