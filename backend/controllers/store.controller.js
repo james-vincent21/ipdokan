@@ -858,7 +858,7 @@ export async function confirmOrderPayment(req, res, next) {
 
 // Puts an unpaid order's reserved stock back: shared-stock plans get their count back, code plans get their
 // reserved codes marked available again.
-async function releaseReservedStock(order) {
+export async function releaseReservedStock(order) {
   if (order.variantId) {
     const product = await Product.findById(order.productId);
     const variant = product?.variants.id(order.variantId);

@@ -38,6 +38,8 @@ const orderSchema = new mongoose.Schema({
   // Crypto payments need longer (blockchain confirmations); the order is kept until this time.
   paymentHoldUntil: { type: Date, default: null },
   status: { type: String, enum: ["pending", "processing", "paid", "cancelled"], default: "pending", index: true },
+  // Set when the gateway reported a failed or wrong payment; the order is then cancelled, never paid.
+  paymentFailure: { type: String, default: "" },
   deliveredCode: { type: String, default: "" },
   deliveredCodes: { type: [String], default: [], index: true },
   paidAt: { type: Date, default: null },

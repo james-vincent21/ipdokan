@@ -1602,3 +1602,8 @@ html[data-theme="light"] .admin-pay-method.is-wallet { color: #1d4fd7; }
 html[data-theme="light"] .admin-pay-method.is-admin { color: #b45309; }
 .admin-stat-total { grid-column: 1 / -1; border-color: rgb(34 197 94 / 40%) !important; }
 .admin-stat-total small { display: block; margin-top: 4px; color: #96a2b5; font-size: 11.5px; }
+.order-status.is-failed { border-color: rgb(239 68 68 / 45%); background: rgb(239 68 68 / 12%); color: #f87171; }
+.admin-payment-failure { display: block; max-width: 220px; margin-top: 4px; color: #f87171 !important; }
+.admin-telegram-tag { background: rgb(14 165 233 / 18%) !important; color: #7dd3fc !important; }
+html[data-theme="light"] .order-status.is-failed, html[data-theme="light"] .admin-payment-failure { color: #dc2626 !important; }
+html[data-theme="light"] .admin-telegram-tag { color: #0369a1 !important; }

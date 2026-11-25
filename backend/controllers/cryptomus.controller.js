@@ -2,9 +2,10 @@ import mongoose from "mongoose";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { Order } from "../models/order.model.js";
 import { config } from "../config/env.js";
-import { fulfillPaidOrder, PENDING_ORDER_EXPIRY_MS } from "./store.controller.js";
+import { PENDING_ORDER_EXPIRY_MS, fulfillPaidOrder, releaseReservedStock } from "./store.controller.js";
 import { WalletTransaction } from "../models/wallet.model.js";
 import { WalletError, completeTopup, failTopup } from "../lib/wallet.js";
+import { notifyAdmins } from "../lib/realtime.js";
 
 // Docs: https://doc.cryptomus.com/merchant-api
 const CRYPTOMUS_API = "https://api.cryptomus.com";
@@ -12,6 +13,9 @@ const INVOICE_LIFETIME_SECONDS = 60 * 60;
 // Blockchain confirmations can take a while after the customer sends funds.
 const ORDER_HOLD_MS = 2 * 60 * 60 * 1000;
 const SUCCESS_STATUSES = new Set(["paid", "paid_over"]);
+// The invoice is finished without a valid payment ("wrong_amount": less than the invoice was paid and the
+// invoice closed). "wrong_amount_waiting" is left alone: the customer can still pay the rest.
+const FAILED_STATUSES = new Set(["cancel", "fail", "system_fail", "wrong_amount", "refund_process", "refund_fail", "refund_paid", "locked"]);
 
 class CryptomusError extends Error {}
 
@@ -97,6 +101,35 @@ export async function createCryptomusInvoice(req, res, next) {
 }
 
 // Asks Cryptomus for the real invoice status. A webhook or redirect alone is never trusted.
+// A failed or wrong Cryptomus payment: the unpaid orders are cancelled (never shown as paid), their
+// reserved stock goes back, and admins are told why.
+async function failCryptomusOrders(orders, cryptomusOrderId, reason) {
+  let failed = 0;
+  for (const order of orders) {
+    const updated = await Order.findOneAndUpdate({ _id: order._id, status: "pending" }, { $set: { status: "cancelled", paymentFailure: reason } }, { new: true });
+    if (!updated) continue;
+    failed += 1;
+    await releaseReservedStock(updated).catch((error) => console.error(`Stock release failed for ${order._id}:`, error.message));
+  }
+  if (!failed) return;
+  console.warn(`Cryptomus payment failed for order_id=${cryptomusOrderId}: ${reason}`);
+  notifyAdmins({ type: "admin-payment-failed", title: "Cryptomus payment failed", message: `${orders.map((order) => order.productName).join(", ")} · ${reason}${orders[0]?.userEmail ? ` · ${orders[0].userEmail}` : ""}`, link: "/admin" });
+}
+
+// Checks a Cryptomus invoice (by our order_id) for the Telegram bot bridge: paid in full, in USD.
+export async function verifyCryptomusInvoice(cryptomusOrderId, minimumUsd = 0) {
+  if (!config.cryptomusEnabled) return { ok: false, reason: "Cryptomus is not configured" };
+  try {
+    const invoice = await cryptomusRequest("/v1/payment/info", { order_id: cryptomusOrderId });
+    const status = String(invoice.payment_status || invoice.status || "").toLowerCase();
+    if (!SUCCESS_STATUSES.has(status)) return { ok: false, reason: `invoice status is "${status || "unknown"}"` };
+    if (String(invoice.order_id) !== cryptomusOrderId) return { ok: false, reason: "invoice belongs to another order" };
+    if (String(invoice.currency).toUpperCase() !== "USD") return { ok: false, reason: `invoice currency is ${invoice.currency}` };
+    if (minimumUsd > 0 && !(Number(invoice.amount) + 0.009 >= minimumUsd)) return { ok: false, reason: `invoice is ${invoice.amount} USD, order needs ${minimumUsd} USD` };
+    return { ok: true, txid: String(invoice.txid || ""), payerCurrency: String(invoice.payer_currency || "") };
+  } catch (error) { return { ok: false, reason: error.message }; }
+}
+
 async function settleCryptomusPayment(cryptomusOrderId) {
   const orders = await Order.find({ cryptomusOrderId });
   if (!orders.length) return "unknown";
@@ -104,12 +137,17 @@ async function settleCryptomusPayment(cryptomusOrderId) {
 
   const invoice = await cryptomusRequest("/v1/payment/info", { order_id: cryptomusOrderId });
   const status = String(invoice.payment_status || invoice.status || "").toLowerCase();
+  if (FAILED_STATUSES.has(status)) {
+    await failCryptomusOrders(orders, cryptomusOrderId, `Cryptomus: ${status.replace(/_/g, " ")}`);
+    return "failed";
+  }
   if (!SUCCESS_STATUSES.has(status)) return status || "check";
 
   // The verified invoice must belong to this checkout and cover its full amount.
   const expected = roundMoney(orders.reduce((sum, order) => sum + order.amount, 0));
   if (String(invoice.order_id) !== cryptomusOrderId || String(invoice.currency).toUpperCase() !== "USD" || !(Number(invoice.amount) + 0.009 >= expected)) {
     console.error(`Cryptomus mismatch for order_id=${cryptomusOrderId}: got order_id=${invoice.order_id} amount=${invoice.amount} ${invoice.currency}, expected ${expected} USD`);
+    await failCryptomusOrders(orders, cryptomusOrderId, `Cryptomus: amount or currency did not match (got ${invoice.amount} ${invoice.currency}, expected ${expected} USD)`);
     return "mismatch";
   }
 
@@ -209,7 +247,6 @@ export async function startCryptomusTopup(transaction) {
   }
 }
 
-const FAILED_STATUSES = new Set(["cancel", "fail", "system_fail", "refund_process", "refund_fail", "refund_paid", "locked"]);
 
 // Checks the top-up with Cryptomus and credits the wallet once the full amount is paid.
 export async function settleCryptomusTopup(transaction) {
@@ -218,6 +255,7 @@ export async function settleCryptomusTopup(transaction) {
   const status = String(invoice.payment_status || invoice.status || "").toLowerCase();
   if (FAILED_STATUSES.has(status)) {
     await failTopup(transaction._id, `Cryptomus status: ${status}`);
+    notifyAdmins({ type: "admin-payment-failed", title: "Cryptomus recharge failed", message: `$${Number(transaction.paidAmount || 0).toFixed(2)} wallet recharge · Cryptomus: ${status.replace(/_/g, " ")}`, link: "/admin" });
     return "failed";
   }
   if (!SUCCESS_STATUSES.has(status)) return "pending";

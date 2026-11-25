@@ -8,6 +8,7 @@ import adminRoutes from "./routes/admin.routes.js";
 import { stripeWebhook } from "./controllers/store.controller.js";
 import { zinipayWebhook } from "./controllers/zinipay.controller.js";
 import { cryptomusWebhook } from "./controllers/cryptomus.controller.js";
+import botRoutes from "./routes/bot.routes.js";
 
 const app = express();
 
@@ -44,6 +45,8 @@ app.post("/api/payments/cryptomus/webhook", express.json({ limit: "64kb" }), cry
 
 // Better Auth needs the raw request stream, so JSON parsing is applied after its handler.
 app.use(express.json({ limit: "16kb" }));
+// Telegram bot bridge: local requests with the bot secret only (see routes/bot.routes.js).
+app.use("/api/bot", botRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api", storeRoutes);
 app.use("/api/admin", adminRoutes);
