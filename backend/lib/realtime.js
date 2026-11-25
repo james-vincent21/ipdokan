@@ -100,9 +100,15 @@ export async function notifyUser(userId, { type, title, message = "", link = "" 
   } catch (error) { console.error("Could not send notification:", error.message); }
 }
 
-// Live-only message to every admin who has the site open (not saved).
-export function notifyAdmins({ type, title, message = "", link = "/admin" }) {
-  target()?.to("admins").emit("notification", { id: `admin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, type, title, message, link, read: false, createdAt: new Date(), live: true });
+// Saved notification for every admin account (emails in ADMIN_EMAILS or added in the admin panel), so it
+// shows in their bell and notification history like any other. Never throws.
+export async function notifyAdmins({ type, title, message = "", link = "/admin" }) {
+  try {
+    const emails = [...new Set([...config.adminEmails, ...(await AdminEmail.find({}, { email: 1 }).lean()).map((item) => item.email)].map((email) => String(email || "").toLowerCase()).filter(Boolean))];
+    if (!emails.length) return;
+    const admins = await mongoose.connection.collection("user").find({ email: { $in: emails } }, { projection: { _id: 1 } }).toArray();
+    await Promise.all(admins.map((admin) => notifyUser(String(admin._id), { type, title, message, link })));
+  } catch (error) { console.error("Could not notify admins:", error.message); }
 }
 
 // Closes every open tab of a user, in every API process (after a ban or account deletion).

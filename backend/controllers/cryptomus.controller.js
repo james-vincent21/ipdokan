@@ -113,6 +113,12 @@ async function settleCryptomusPayment(cryptomusOrderId) {
     return "mismatch";
   }
 
+  // Coin and transaction id are saved first, so the paid-order notification can show them.
+  await Order.updateMany({ cryptomusOrderId }, { $set: {
+    cryptomusTxid: String(invoice.txid || ""),
+    cryptomusPayerCurrency: String(invoice.payer_currency || ""),
+    ...(invoice.uuid ? { cryptomusUuid: String(invoice.uuid) } : {}),
+  } });
   for (const order of orders) {
     if (order.status === "paid") continue;
     if (order.status === "cancelled") {
@@ -122,11 +128,6 @@ async function settleCryptomusPayment(cryptomusOrderId) {
     try { await fulfillPaidOrder(String(order._id), { method: "cryptomus", reference: cryptomusOrderId }); }
     catch (error) { console.error(`Cryptomus fulfillment failed for order ${order._id}:`, error.message); }
   }
-  await Order.updateMany({ cryptomusOrderId }, { $set: {
-    cryptomusTxid: String(invoice.txid || ""),
-    cryptomusPayerCurrency: String(invoice.payer_currency || ""),
-    ...(invoice.uuid ? { cryptomusUuid: String(invoice.uuid) } : {}),
-  } });
   console.log(`Cryptomus payment completed: order_id=${cryptomusOrderId} status=${status} payer=${invoice.payer_currency || "-"} txid=${invoice.txid || "-"}`);
   return status;
 }

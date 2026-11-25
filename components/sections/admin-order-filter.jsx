@@ -77,9 +77,10 @@ export function summarizeOrders(orders) {
 }
 
 // Paid revenue in one currency, bucketed by day for ranges up to ~2 months, otherwise by month.
-export function buildRevenueChart(orders, filter, currency) {
+// currency "ALL": USD and BDT orders together, BDT converted to USD at `bdtPerUsd`.
+export function buildRevenueChart(orders, filter, currency, bdtPerUsd = 0) {
   const now = new Date();
-  const paid = orders.filter((order) => order.status === "paid" && (order.currency === "BDT" ? "BDT" : "USD") === currency);
+  const paid = orders.filter((order) => order.status === "paid" && (currency === "ALL" ? (order.currency !== "BDT" || bdtPerUsd > 0) : (order.currency === "BDT" ? "BDT" : "USD") === currency));
   let { start, end } = getDateRange(filter, now);
   if (!end) end = addDays(startOfDay(now), 1);
   if (!start) {
@@ -102,7 +103,8 @@ export function buildRevenueChart(orders, filter, currency) {
   for (const order of paid) {
     const bucket = buckets[index.get(keyOf(new Date(order.createdAt)))];
     if (!bucket) continue;
-    bucket.revenue += Number(order.amount) || 0;
+    const amount = Number(order.amount) || 0;
+    bucket.revenue += currency === "ALL" && order.currency === "BDT" ? amount / bdtPerUsd : amount;
     bucket.orders += 1;
   }
   return { data: buckets.map((bucket) => ({ ...bucket, revenue: Math.round(bucket.revenue * 100) / 100 })), daily };

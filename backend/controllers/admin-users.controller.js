@@ -8,7 +8,7 @@ import mongoose from "mongoose";
 import { auth } from "../lib/auth.js";
 import { config } from "../config/env.js";
 import { AdminEmail } from "../models/admin-email.model.js";
-import { Wallet } from "../models/wallet.model.js";
+import { Wallet, WalletTransaction } from "../models/wallet.model.js";
 import { Cart, Notification } from "../models/notification.model.js";
 import { disconnectUser } from "../lib/realtime.js";
 import { WalletError, creditWallet, debitWallet, topupCreditCents } from "../lib/wallet.js";
@@ -143,5 +143,22 @@ export async function searchUsers(req, res, next) {
     const wallets = await Wallet.find({ userId: { $in: found.map((user) => String(user._id)) } }, { userId: 1, balanceCents: 1 }).lean();
     const balance = new Map(wallets.map((wallet) => [wallet.userId, wallet.balanceCents]));
     res.json({ users: found.map((user) => ({ id: String(user._id), name: user.name || "", email: user.email || "", phone: user.phone || "", banned: Boolean(user.banned), walletBalanceUsd: (balance.get(String(user._id)) || 0) / 100 })) });
+  } catch (error) { next(error); }
+}
+
+// Latest wallet recharges (all methods), with the customer's name and email, for the admin Overview.
+export async function recentTopups(_req, res, next) {
+  try {
+    const topups = await WalletTransaction.find({ type: { $in: ["topup", "credit", "debit"] } }).sort({ createdAt: -1 }).limit(30).lean();
+    const ids = [...new Set(topups.map((item) => item.userId))].map(toObjectId).filter(Boolean);
+    const people = await users().find({ _id: { $in: ids } }, { projection: { name: 1, email: 1 } }).toArray();
+    const byId = new Map(people.map((person) => [String(person._id), person]));
+    res.json({ topups: topups.map((item) => ({
+      id: String(item._id), type: item.type, status: item.status, method: item.method,
+      paidAmount: item.paidAmount || 0, paidCurrency: item.paidCurrency || "USD", creditedUsd: (item.amountCents || 0) / 100, bonusUsd: (item.bonusCents || 0) / 100,
+      txid: item.cryptomusTxid || item.zinipayTransactionId || "", note: item.note || "", adminEmail: item.adminEmail || "",
+      userName: byId.get(item.userId)?.name || "", userEmail: byId.get(item.userId)?.email || "",
+      createdAt: item.createdAt, completedAt: item.completedAt,
+    })) });
   } catch (error) { next(error); }
 }

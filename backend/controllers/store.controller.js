@@ -1002,6 +1002,6 @@ export async function adminOverview(_req, res, next) {
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
       return { month: date.toLocaleString("en", { month: "short" }), revenue: monthlyMap.get(key)?.revenue || 0, orders: monthlyMap.get(key)?.orders || 0 };
     });
-    res.json({ stats: { products, users, orders, revenue: paid[0]?.revenue || 0 }, chart, recentOrders: recentOrders.map((order) => ({ ...order, invoiceId: getInvoiceId(order) })) });
+    res.json({ stats: { products, users, orders, revenue: paid[0]?.revenue || 0, bdtPerUsd: config.wallet.bdtPerUsd }, chart, recentOrders: recentOrders.map((order) => ({ ...order, invoiceId: getInvoiceId(order) })) });
   } catch (error) { next(error); }
 }
