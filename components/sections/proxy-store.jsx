@@ -52,6 +52,7 @@ export function ProxyStore() {
   const [serviceFeePercent, setServiceFeePercent] = useState(DEFAULT_SERVICE_FEE_PERCENT);
   const locationRef = useRef(null);
   const summaryRef = useRef(null);
+  const plansRef = useRef(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -89,6 +90,8 @@ export function ProxyStore() {
     const url = new URL(window.location.href);
     url.searchParams.set("type", slug);
     window.history.replaceState(null, "", url);
+    // Take the customer down to the plans of the type they picked (phones included).
+    window.setTimeout(() => plansRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
   function choosePlan(id) {
     setPlanId(id); setQuantity(1); setNotice("");
@@ -154,7 +157,7 @@ export function ProxyStore() {
       </button>)}
     </div>
 
-    <section className="proxy-plan-layout" aria-label={`${type.label} plans`}>
+    <section ref={plansRef} className="proxy-plan-layout" aria-label={`${type.label} plans`}>
       <aside className="proxy-type-details">
         <span className="proxy-type-icon">{typeIcons[type.slug]}</span>
         <h2>{type.label} details</h2>
