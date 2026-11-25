@@ -1193,6 +1193,11 @@ button.proxy-chip.is-selected { border-color: var(--blue); background: var(--blu
   .proxy-location-section { padding: 18px 14px; }
   .proxy-summary { bottom: 8px; padding: 14px; }
   .proxy-summary-actions { width: 100%; }
+}
+/* Phones and tablets: the order summary is too tall to float over the locations; it sits below them
+   (choosing a provider scrolls down to it). */
+@media (max-width: 900px) {
+  .proxy-summary { position: static; }
   .proxy-summary-actions > button, .proxy-summary-actions > a { flex: 1; }
 }
 .proxy-related { margin-top: 36px; }
