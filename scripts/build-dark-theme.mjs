@@ -99,7 +99,18 @@ source.walkRules((rule) => {
   rules += 1; if (touched) changedCount += 1;
 });
 
-const extras = `
+// Text on the off-white glass cards: the 30% tint turns the cards mid-grey in dark mode, so muted grey
+// and blue text is lifted to near-white / light blue, with a faint shadow for contrast.
+const GLASS_CARDS = [".popular-product-card", ".store-product-card", ".proxy-plan-card", ".proxy-type-card:not(.is-selected)", ".benefit-card", ".service-card", ".overview-service-card", ".trust-feature"];
+const inDark = (selectors) => selectors.map((s) => `${SCOPE} ${s}`).join(", ");
+const CARD_TEXT = `
+${inDark(GLASS_CARDS)} { text-shadow: 0 1px 2px rgb(0 0 0 / 35%); }
+${inDark([".proxy-plan-price", ".proxy-plan-card ul li::before", ".catalog-home-cta"])} { color: #d3e0ff; }
+${inDark([".proxy-plan-price small", ".proxy-plan-per-ip", ".proxy-type-card small", ".store-product-category", ".store-product-rating small", ".service-card > p", ".overview-service-card p", ".overview-service-number", ".benefit-card p", ".trust-feature p", ".catalog-product-description", ".product-rating", ".product-rating i", ".store-product-rating i"])} { color: #e6e9f0; }
+${inDark([".proxy-plan-card ul", ".popular-product-name", ".service-card-footer", ".store-product-info h2", ".store-product-price"])} { color: #f7f8fb; }
+`;
+
+const extras = CARD_TEXT + `
 ${SCOPE} {
   --background: ${ASH.background};
   --surface: ${ASH.surface};

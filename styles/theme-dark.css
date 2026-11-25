@@ -675,6 +675,15 @@ html[data-theme="dark"] .proxy-type-card.is-selected .proxy-type-icon {
 html[data-theme="dark"] .proxy-type-details {
     background: var(--surface)
 }
+html[data-theme="dark"] button.proxy-chip {
+    background: transparent
+}
+html[data-theme="dark"] button.proxy-chip.is-selected {
+    background: var(--blue)
+}
+html[data-theme="dark"] .proxy-isp-filter button {
+    background: none
+}
 html[data-theme="dark"] .proxy-currency-toggle button {
     background: transparent
 }
@@ -835,6 +844,11 @@ html[data-theme="dark"] .pl-bar {
 html[data-theme="dark"] .pl-bar i {
     background: linear-gradient(90deg, #3977ff, #19e6b0)
 }
+
+html[data-theme="dark"] .popular-product-card, html[data-theme="dark"] .store-product-card, html[data-theme="dark"] .proxy-plan-card, html[data-theme="dark"] .proxy-type-card:not(.is-selected), html[data-theme="dark"] .benefit-card, html[data-theme="dark"] .service-card, html[data-theme="dark"] .overview-service-card, html[data-theme="dark"] .trust-feature { text-shadow: 0 1px 2px rgb(0 0 0 / 35%); }
+html[data-theme="dark"] .proxy-plan-price, html[data-theme="dark"] .proxy-plan-card ul li::before, html[data-theme="dark"] .catalog-home-cta { color: #d3e0ff; }
+html[data-theme="dark"] .proxy-plan-price small, html[data-theme="dark"] .proxy-plan-per-ip, html[data-theme="dark"] .proxy-type-card small, html[data-theme="dark"] .store-product-category, html[data-theme="dark"] .store-product-rating small, html[data-theme="dark"] .service-card > p, html[data-theme="dark"] .overview-service-card p, html[data-theme="dark"] .overview-service-number, html[data-theme="dark"] .benefit-card p, html[data-theme="dark"] .trust-feature p, html[data-theme="dark"] .catalog-product-description, html[data-theme="dark"] .product-rating, html[data-theme="dark"] .product-rating i, html[data-theme="dark"] .store-product-rating i { color: #e6e9f0; }
+html[data-theme="dark"] .proxy-plan-card ul, html[data-theme="dark"] .popular-product-name, html[data-theme="dark"] .service-card-footer, html[data-theme="dark"] .store-product-info h2, html[data-theme="dark"] .store-product-price { color: #f7f8fb; }
 
 html[data-theme="dark"] {
   --background: #1f2125;

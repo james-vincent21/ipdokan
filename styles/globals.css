@@ -1124,14 +1124,21 @@ a.product-purchase-button { display: inline-flex; align-items: center; justify-c
 .proxy-feature-list li::before { margin-right: 8px; color: #6fd3a0; content: "✓"; }
 .proxy-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .proxy-chip { border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; color: #d7deeb; font-size: 12.5px; }
+/* Provider chips are buttons: clicking one shows only that provider's locations. */
+button.proxy-chip { background: transparent; font: inherit; font-size: 12.5px; cursor: pointer; transition: border-color .2s, background-color .2s, color .2s; }
+button.proxy-chip:hover { border-color: rgb(86 135 255 / 55%); }
+button.proxy-chip.is-selected { border-color: var(--blue); background: var(--blue); color: #fff; }
+.proxy-isp-filter { margin: 0 0 12px; color: #a4adbf; font-size: 13px; }
+.proxy-isp-filter strong { color: #e8ecf5; }
+.proxy-isp-filter button { margin-left: 6px; border: 0; background: none; padding: 0; color: #78a0ff; font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
 .proxy-currency-toggle { display: inline-flex; justify-self: start; gap: 2px; margin-top: 6px; border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
 .proxy-currency-toggle button { border: 0; border-radius: 7px; background: transparent; padding: 6px 12px; color: #aeb5c4; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .proxy-currency-toggle button.is-selected { background: var(--blue); color: #fff; }
 .proxy-plan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
-.proxy-plan-card { display: grid; gap: 12px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); padding: 22px; transition: border-color .2s, box-shadow .2s; }
+.proxy-plan-card { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 12px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); padding: 22px; transition: border-color .2s, box-shadow .2s; }
 .proxy-plan-card.is-selected { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue), 0 14px 34px rgb(57 119 255 / 18%); }
 .proxy-plan-card h3 { margin: 0; font-size: 17px; letter-spacing: -.01em; }
-.proxy-plan-price { margin: 0; color: #78a0ff; font-size: 30px; font-weight: 700; letter-spacing: -.03em; }
+.proxy-plan-price { margin: 0; overflow-wrap: anywhere; color: #78a0ff; font-size: clamp(22px, 2vw, 30px); font-weight: 700; letter-spacing: -.03em; }
 .proxy-plan-price small { color: #8e9bb1; font-size: 13px; font-weight: 500; letter-spacing: 0; }
 .proxy-plan-per-ip { margin: -4px 0 0; color: #9ca8bc; font-size: 13px; font-weight: 600; }
 .variant-per-ip { opacity: .75; }

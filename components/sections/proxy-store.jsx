@@ -44,6 +44,7 @@ export function ProxyStore() {
   const [countryCode, setCountryCode] = useState("");
   const [cityKey, setCityKey] = useState("");
   const [locationId, setLocationId] = useState("");
+  const [ispFilter, setIspFilter] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [showAllPlans, setShowAllPlans] = useState(false);
   const [notice, setNotice] = useState("");
@@ -75,6 +76,9 @@ export function ProxyStore() {
   }, []);
 
   const type = types.find((item) => item.slug === typeSlug) || null;
+  // "Available providers" chips filter the locations to one provider (ISP).
+  const matchesIsp = (entry) => !ispFilter || entry.isp === ispFilter;
+  const shownCountries = (type?.countries || []).map((item) => ({ ...item, cities: item.cities.map((c) => ({ ...c, providers: c.providers.filter(matchesIsp) })).filter((c) => c.providers.length) })).filter((item) => item.cities.length);
   const plan = type?.plans.find((item) => item.id === planId) || null;
   const country = type?.countries.find((item) => item.code === countryCode) || null;
   const city = country?.cities.find((item) => item.key === cityKey) || null;
@@ -86,7 +90,7 @@ export function ProxyStore() {
   const visiblePlans = (showAllPlans ? type?.plans : type?.plans.slice(0, PLANS_SHOWN)) || [];
 
   function chooseType(slug) {
-    setTypeSlug(slug); setPlanId(""); setCountryCode(""); setCityKey(""); setLocationId(""); setQuantity(1); setShowAllPlans(false); setNotice("");
+    setTypeSlug(slug); setIspFilter(""); setPlanId(""); setCountryCode(""); setCityKey(""); setLocationId(""); setQuantity(1); setShowAllPlans(false); setNotice("");
     const url = new URL(window.location.href);
     url.searchParams.set("type", slug);
     window.history.replaceState(null, "", url);
@@ -110,6 +114,29 @@ export function ProxyStore() {
     setCityKey(nextCity.key); setNotice("");
     const usable = nextCity.providers.filter((item) => item.stock >= (plan?.ips || 1));
     setLocationId(usable.length === 1 ? usable[0].locationId : "");
+  }
+  function chooseIsp(isp) {
+    const next = isp === ispFilter ? "" : isp;
+    setIspFilter(next); setNotice("");
+    if (!next) return;
+    // Keep the current choice if it is this provider; otherwise pick the only usable location, if there is one.
+    if (provider?.isp === next) return;
+    const usable = [];
+    for (const item of type.countries) for (const c of item.cities) for (const entry of c.providers) {
+      if (entry.isp === next && entry.stock >= (plan?.ips || 1)) usable.push({ country: item.code, city: c.key, locationId: entry.locationId });
+    }
+    if (plan && usable.length === 1) { setCountryCode(usable[0].country); setCityKey(usable[0].city); setLocationId(usable[0].locationId); }
+    else {
+      setLocationId("");
+      // Open the country (and area) straight away when this provider is only in one.
+      const countriesWithIsp = [...new Set(usable.map((entry) => entry.country))];
+      if (countriesWithIsp.length === 1) {
+        setCountryCode(countriesWithIsp[0]);
+        const cities = [...new Set(usable.map((entry) => entry.city))];
+        setCityKey(cities.length === 1 ? cities[0] : "");
+      } else if (!countriesWithIsp.includes(countryCode)) { setCountryCode(""); setCityKey(""); }
+    }
+    if (plan) window.setTimeout(() => locationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
   function chooseProvider(id) {
     setLocationId(id); setNotice("");
@@ -162,7 +189,7 @@ export function ProxyStore() {
         <ul className="proxy-feature-list">{type.information.map((line) => <li key={line}>{line}</li>)}</ul>
         {type.isps.length > 0 && <>
           <h3>Available providers</h3>
-          <div className="proxy-chip-row">{type.isps.map((isp) => <span className="proxy-chip" key={isp}>{isp}</span>)}</div>
+          <div className="proxy-chip-row">{type.isps.map((isp) => <button type="button" className={`proxy-chip${isp === ispFilter ? " is-selected" : ""}`} aria-pressed={isp === ispFilter} key={isp} onClick={() => chooseIsp(isp)}>{isp}</button>)}</div>
         </>}
         <div className="proxy-currency-toggle" role="group" aria-label="Currency">{["USD", "BDT"].map((item) => <button key={item} type="button" className={currency === item ? "is-selected" : ""} aria-pressed={currency === item} onClick={() => setCurrency(item)}>{item}</button>)}</div>
       </aside>
@@ -194,13 +221,14 @@ export function ProxyStore() {
       <h2 id="proxy-location-title">{plan ? <>Choose location for <span>{planTitle(plan, type)}</span></> : "Choose a plan to see available locations"}</h2>
       {plan && (type.locationsError ? <p className="proxy-store-state">Locations could not be loaded right now. Please refresh in a moment.</p> : <>
         <h3 className="proxy-step-label">1. Country</h3>
-        <div className="proxy-country-row">{type.countries.map((item) => <button key={item.code} type="button" className={`proxy-country${item.code === countryCode ? " is-selected" : ""}`} onClick={() => chooseCountry(item.code)}>
+        {ispFilter && <p className="proxy-isp-filter">Showing only <strong>{ispFilter}</strong> locations. <button type="button" onClick={() => chooseIsp(ispFilter)}>Show all providers</button></p>}
+        <div className="proxy-country-row">{shownCountries.map((item) => <button key={item.code} type="button" className={`proxy-country${item.code === countryCode ? " is-selected" : ""}`} onClick={() => chooseCountry(item.code)}>
           <span aria-hidden="true">{flag(item.code)}</span><strong>{item.name}</strong><small>{item.cities.length} {item.cities.length === 1 ? "area" : "areas"}</small>
         </button>)}</div>
 
-        {country && <>
+        {country && shownCountries.some((item) => item.code === country.code) && <>
           <h3 className="proxy-step-label">2. Area and provider in {country.name}</h3>
-          <div className="proxy-city-grid">{country.cities.map((item) => {
+          <div className="proxy-city-grid">{shownCountries.find((item) => item.code === country.code).cities.map((item) => {
             const enough = item.providers.some((entry) => entry.stock >= plan.ips);
             return <article key={item.key} className={`proxy-city${item.key === cityKey ? " is-selected" : ""}${enough ? "" : " is-unavailable"}`}>
               <button type="button" className="proxy-city-head" disabled={!enough} onClick={() => chooseCity(item)}>

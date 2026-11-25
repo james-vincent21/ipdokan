@@ -1573,6 +1573,21 @@ html[data-theme="light"] .proxy-feature-list li::before {
 html[data-theme="light"] .proxy-chip {
     color: rgb(60 82 124)
 }
+html[data-theme="light"] button.proxy-chip:hover {
+    border-color: rgb(0 53 184 / 55%)
+}
+html[data-theme="light"] button.proxy-chip.is-selected {
+    color: #fff
+}
+html[data-theme="light"] .proxy-isp-filter {
+    color: rgb(64 73 91)
+}
+html[data-theme="light"] .proxy-isp-filter strong {
+    color: rgb(15 22 36)
+}
+html[data-theme="light"] .proxy-isp-filter button {
+    color: rgb(0 54 184)
+}
 html[data-theme="light"] .proxy-currency-toggle button {
     color: rgb(59 66 81)
 }
