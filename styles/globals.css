@@ -1607,3 +1607,13 @@ html[data-theme="light"] .admin-pay-method.is-admin { color: #b45309; }
 .admin-telegram-tag { background: rgb(14 165 233 / 18%) !important; color: #7dd3fc !important; }
 html[data-theme="light"] .order-status.is-failed, html[data-theme="light"] .admin-payment-failure { color: #dc2626 !important; }
 html[data-theme="light"] .admin-telegram-tag { color: #0369a1 !important; }
+.auth-turnstile { min-height: 65px; }
+
+/* Footer "Protected by Cloudflare and Sentry" badge */
+.footer-protected { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.footer-protected-label { color: #8f9aaf; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.footer-protected-badge { display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgb(255 255 255 / 12%); border-radius: 999px; background: rgb(255 255 255 / 5%); padding: 5px 11px 5px 6px; color: #e8ecf5; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.footer-protected-logo { display: grid; width: 22px; height: 22px; flex: 0 0 22px; place-items: center; border-radius: 50%; background: #fff; }
+.footer-protected-logo svg { width: 16px; height: 16px; }
+html[data-theme="light"] .footer-protected-label { color: #6b7280; }
+html[data-theme="light"] .footer-protected-badge { border-color: #dce2ec; background: #fff; color: #1f2937; }

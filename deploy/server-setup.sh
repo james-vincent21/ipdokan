@@ -36,6 +36,9 @@ REDIS_PASSWORD="$(grep '^REDIS_PASSWORD=' .env | tail -1 | cut -d= -f2-)" docker
 npm ci
 NODE_ENV=production NEXT_PUBLIC_API_URL="$PUBLIC_URL" npx next build
 
+# nginx micro-cache directory for /api/products (proxy_cache_path in nginx.conf).
+mkdir -p /var/cache/nginx/ipdokan
+chown -R www-data:www-data /var/cache/nginx/ipdokan 2>/dev/null || true
 cp deploy/nginx.conf /etc/nginx/sites-available/ipdokan
 ln -sf /etc/nginx/sites-available/ipdokan /etc/nginx/sites-enabled/ipdokan
 rm -f /etc/nginx/sites-enabled/default
