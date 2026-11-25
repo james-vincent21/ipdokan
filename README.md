@@ -79,6 +79,12 @@
       <br><sub><b>Footer</b>: categories, links, contact, Cloudflare and Sentry protection</sub>
     </td>
   </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <img src=".github/assets/screenshot-sign-in.png" alt="Sign-in dialog with Google sign-in and Cloudflare Turnstile" width="50%">
+      <br><sub><b>Sign in / sign up</b>: Google or email, protected by Cloudflare Turnstile</sub>
+    </td>
+  </tr>
 </table>
 
 ## About
