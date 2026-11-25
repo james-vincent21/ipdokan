@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { config } from "../config/env.js";
 import { Wallet, WalletTransaction } from "../models/wallet.model.js";
 import { Order } from "../models/order.model.js";
-import { notifyWalletRefund, notifyWalletTopup } from "./order-notifications.js";
+import { notifyWalletCredit, notifyWalletRefund, notifyWalletTopup } from "./order-notifications.js";
 
 export class WalletError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
@@ -76,6 +76,18 @@ export async function refundToWallet(userId, amountCents, orderIds, note) {
   });
   if (wallet) notifyWalletRefund(userId, amountCents, wallet.balanceCents);
   return wallet;
+}
+
+// Money an admin adds to a customer's wallet by hand. Balance and record are saved together.
+export async function creditWallet(userId, amountCents, { note = "", adminEmail = "", paidAmount = 0, paidCurrency = "USD", bdtPerUsd = 0 } = {}) {
+  if (!(amountCents > 0)) throw new WalletError("Amount must be more than zero.");
+  const result = await inTransaction(async (session) => {
+    const wallet = await Wallet.findOneAndUpdate({ userId }, { $inc: { balanceCents: amountCents } }, { session, upsert: true, returnDocument: "after", setDefaultsOnInsert: true });
+    const [transaction] = await WalletTransaction.create([{ userId, type: "credit", status: "completed", method: "admin", amountCents, balanceAfterCents: wallet.balanceCents, paidAmount, paidCurrency, bdtPerUsd, note: String(note).slice(0, 300), adminEmail, completedAt: new Date() }], { session });
+    return { wallet, transaction };
+  });
+  notifyWalletCredit(userId, amountCents, result.wallet.balanceCents, note);
+  return result;
 }
 
 // Pays pending USD orders from the wallet. The orders are claimed and the balance is charged in one

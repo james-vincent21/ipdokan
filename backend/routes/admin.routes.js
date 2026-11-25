@@ -3,7 +3,7 @@ import { requireAuth } from "../middleware/auth.middleware.js";
 import { requireAdmin } from "../middleware/admin.middleware.js";
 import { addAdminEmail, addCodes, addProduct, adminOrders, adminOverview, adminProducts, adminReviews, adminUsers, cancelOrder, confirmOrderPayment, deleteProduct, deleteProductReview, editProduct, listAdminEmails, productActivity, removeAdminEmail, replyToProductReview, setProductStock } from "../controllers/store.controller.js";
 import { IMAGE_TYPES, MAX_IMAGE_BYTES, imageTooLarge, uploadProductImage } from "../controllers/upload.controller.js";
-import { banUser, deleteUser, unbanUser } from "../controllers/admin-users.controller.js";
+import { banUser, creditUserWallet, deleteUser, lookupUser, unbanUser } from "../controllers/admin-users.controller.js";
 import { importSupplierProducts, retrySupplierDelivery, setSupplierDelivery, supplierPlans, supplierPrice, supplierStatus } from "../controllers/supplier.controller.js";
 
 const router = Router();
@@ -21,6 +21,8 @@ router.delete("/products/:id", deleteProduct);
 router.post("/products/:id/codes", addCodes);
 router.patch("/products/:id/stock", setProductStock);
 router.get("/users", adminUsers);
+router.get("/users/:id/lookup", lookupUser);
+router.post("/users/:id/wallet-credit", creditUserWallet);
 router.post("/users/:id/ban", banUser);
 router.post("/users/:id/unban", unbanUser);
 router.delete("/users/:id", deleteUser);

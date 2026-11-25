@@ -1468,3 +1468,8 @@ html.pl-done #site-preloader { visibility: hidden; opacity: 0; pointer-events: n
 @media (prefers-reduced-motion: reduce) { .pl-packet { display: none; } .pl-logo-wrap, .pl-link, .pl-tower .pl-wave, .pl-led { animation: none; } .pl-tower .pl-wave { opacity: 1; } }
 .product-detail-price-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; }
 .product-detail-price-row .product-detail-price { margin: 0; }
+.admin-user-id { display: block; margin-top: 3px; color: #8e9bb1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; user-select: all; }
+.admin-credit-user { display: grid; gap: 14px; margin-top: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+.admin-credit-user > div { display: grid; gap: 3px; }
+.admin-credit-user span, .admin-credit-user small { color: #96a2b5; font-size: 12px; }
+.admin-credit-form { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); align-items: end; }

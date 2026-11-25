@@ -937,7 +937,7 @@ export async function adminUsers(_req, res, next) {
     }
     res.json({ users: users.map((user) => {
       const record = byUser.get(String(user._id)) || { purchases: [], paidTotals: {} };
-      return { id: user._id, name: user.name, email: user.email, image: user.image, phone: user.phone || "", createdAt: user.createdAt, banned: Boolean(user.banned), banReason: user.banReason || "", bannedAt: user.bannedAt || null, isAdmin: adminSet.has(String(user.email || "").toLowerCase()), orderCount: record.purchases.length, paidTotals: record.paidTotals, purchases: record.purchases };
+      return { id: user._id, name: user.name, email: user.email, image: user.image, phone: user.phone || "", emailVerified: Boolean(user.emailVerified), createdAt: user.createdAt, banned: Boolean(user.banned), banReason: user.banReason || "", bannedAt: user.bannedAt || null, isAdmin: adminSet.has(String(user.email || "").toLowerCase()), orderCount: record.purchases.length, paidTotals: record.paidTotals, purchases: record.purchases };
     }) });
   } catch (error) { next(error); }
 }

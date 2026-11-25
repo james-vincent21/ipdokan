@@ -11,6 +11,7 @@ import { AdminEmail } from "../models/admin-email.model.js";
 import { Wallet } from "../models/wallet.model.js";
 import { Cart, Notification } from "../models/notification.model.js";
 import { disconnectUser } from "../lib/realtime.js";
+import { WalletError, creditWallet, topupCreditCents } from "../lib/wallet.js";
 
 const users = () => mongoose.connection.collection("user");
 const toObjectId = (id) => (mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(String(id)) : null);
@@ -75,4 +76,38 @@ export async function deleteUser(req, res, next) {
     ]);
     res.json({ deleted: true });
   } catch (error) { next(error); }
+}
+
+// Wallet credit: the admin finds a verified customer by user id, then adds money to their wallet.
+async function findVerifiedUser(id) {
+  const _id = toObjectId(String(id || "").trim());
+  const user = _id ? await users().findOne({ _id }, { projection: { name: 1, email: 1, image: 1, phone: 1, emailVerified: 1, banned: 1, createdAt: 1 } }) : null;
+  if (!user) return { status: 404, error: "No user has this id." };
+  if (!user.emailVerified) return { status: 400, error: "This user has not verified their email. Only verified users can receive credit." };
+  return { user };
+}
+
+export async function lookupUser(req, res, next) {
+  try {
+    const { user, status, error } = await findVerifiedUser(req.params.id);
+    if (!user) return res.status(status).json({ error });
+    const wallet = await Wallet.findOne({ userId: String(user._id) }, { balanceCents: 1 }).lean();
+    res.json({ user: { id: String(user._id), name: user.name || "", email: user.email || "", image: user.image || "", phone: user.phone || "", banned: Boolean(user.banned), createdAt: user.createdAt, walletBalanceUsd: (wallet?.balanceCents || 0) / 100 } });
+  } catch (error) { next(error); }
+}
+
+export async function creditUserWallet(req, res, next) {
+  try {
+    const { user, status, error } = await findVerifiedUser(req.params.id);
+    if (!user) return res.status(status).json({ error });
+    const currency = req.body?.currency === "BDT" ? "BDT" : "USD";
+    const amount = Number(req.body?.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: "Enter an amount more than zero." });
+    if (amount > (currency === "BDT" ? 1_000_000 : 10_000)) return res.status(400).json({ error: "That amount is too large for one credit." });
+    const note = typeof req.body?.note === "string" ? req.body.note.trim().slice(0, 200) : "";
+    const amountCents = topupCreditCents(amount, currency);
+    if (!(amountCents > 0)) return res.status(400).json({ error: "The amount is less than one cent after conversion." });
+    const { wallet } = await creditWallet(String(user._id), amountCents, { note, adminEmail: String(req.user.email || "").toLowerCase(), paidAmount: amount, paidCurrency: currency, bdtPerUsd: currency === "BDT" ? config.wallet.bdtPerUsd : 0 });
+    res.json({ creditedUsd: amountCents / 100, walletBalanceUsd: wallet.balanceCents / 100 });
+  } catch (error) { if (error instanceof WalletError) return res.status(error.status).json({ error: error.message }); next(error); }
 }
