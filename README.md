@@ -31,12 +31,52 @@
 <table>
   <tr>
     <td width="50%" align="center">
+      <img src=".github/assets/screenshot-home.png" alt="Home page hero">
+      <br><sub><b>Home page</b>: find the right IP for your needs</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src=".github/assets/screenshot-services-menu.png" alt="Services menu">
+      <br><sub><b>Services menu</b>: ISP, private and residential proxies, dedicated servers, VPS</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
       <img src=".github/assets/screenshot-proxy-plans.png" alt="Choosing a proxy type and plan">
       <br><sub><b>Choose a proxy type and plan</b>: Private, ISP, Premium ISP and Static Residential</sub>
     </td>
     <td width="50%" align="center">
       <img src=".github/assets/screenshot-location-checkout.png" alt="Choosing a location and provider before checkout">
       <br><sub><b>Pick a country, area and provider</b>, then add to cart or buy now</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src=".github/assets/screenshot-notifications.png" alt="Real-time notifications">
+      <br><sub><b>Real-time notifications</b>: wallet credits and order updates</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src=".github/assets/screenshot-support-chat.png" alt="Support chat widget">
+      <br><sub><b>Support chat</b>: quick help for plans, ISP proxies, servers and VPS</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src=".github/assets/screenshot-telegram-bot.png" alt="Telegram bot section">
+      <br><sub><b>Telegram bot</b>: use the service from any device</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src=".github/assets/screenshot-telegram-profile.png" alt="IPDokan Telegram bot profile">
+      <br><sub><b>@ipdokanbot</b>: the IPDokan Proxy Store on Telegram</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src=".github/assets/screenshot-about.png" alt="About IP Dokan section">
+      <br><sub><b>Why IP Dokan</b>: speed, privacy, global coverage, flexible plans</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src=".github/assets/screenshot-footer.png" alt="Site footer">
+      <br><sub><b>Footer</b>: categories, links, contact, Cloudflare and Sentry protection</sub>
     </td>
   </tr>
 </table>
