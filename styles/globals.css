@@ -1466,3 +1466,5 @@ html.pl-done #site-preloader { visibility: hidden; opacity: 0; pointer-events: n
 .pl-bar i { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 6px; background: linear-gradient(90deg, #3977ff, #19e6b0); }
 .pl-pct { min-width: 48px; color: #e8ecf5; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
 @media (prefers-reduced-motion: reduce) { .pl-packet { display: none; } .pl-logo-wrap, .pl-link, .pl-tower .pl-wave, .pl-led { animation: none; } .pl-tower .pl-wave { opacity: 1; } }
+.product-detail-price-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; }
+.product-detail-price-row .product-detail-price { margin: 0; }

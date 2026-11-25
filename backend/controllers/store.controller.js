@@ -632,9 +632,8 @@ export async function editProduct(req, res, next) {
       const keptIds = new Set(req.body.variants.map((input) => input.id).filter(Boolean));
       for (const existing of [...product.variants]) {
         if (!keptIds.has(String(existing._id))) {
-          if (existing.codes.some((code) => code.status === "reserved")) return res.status(409).json({ error: `${existing.name} has codes reserved by unpaid orders. Confirm or cancel those orders before removing this variant.` });
-          const openOrder = await Order.exists({ variantId: existing._id, status: { $in: ["pending", "processing"] } });
-          if (openOrder) return res.status(409).json({ error: `${existing.name} has unpaid orders. Confirm or cancel those orders before removing this variant.` });
+          const blocked = await unpaidOrderBlock({ variantId: existing._id }, existing.name);
+          if (blocked) return res.status(409).json({ error: blocked });
           product.variants.pull(existing._id);
         }
       }
@@ -700,13 +699,31 @@ export async function editProduct(req, res, next) {
   } catch (error) { if (error.name === "Error") return res.status(400).json({ error: error.message }); next(error); }
 }
 
+// While a customer still has time to pay for an unpaid order, the product or plan it holds stock from cannot be removed.
+// Orders whose time is up are cancelled first (as the background job would), which returns their stock.
+async function unpaidOrderBlock(filter, label) {
+  await expirePendingOrders();
+  const orders = await Order.find({ ...filter, status: { $in: ["pending", "processing"] } });
+  if (!orders.length) return "";
+  if (orders.some((order) => order.status === "processing")) return `${label} has orders being paid or delivered right now. Wait for them to finish, then try again.`;
+  const releaseAt = Math.max(...orders.map((order) => Math.max(
+    new Date(order.createdAt).getTime() + PENDING_ORDER_EXPIRY_MS,
+    order.paymentStartedAt ? new Date(order.paymentStartedAt).getTime() + PENDING_ORDER_EXPIRY_MS : 0,
+    order.paymentHoldUntil ? new Date(order.paymentHoldUntil).getTime() : 0,
+  )));
+  const minutes = Math.max(1, Math.ceil((releaseAt - Date.now()) / 60000));
+  return `${label} has ${orders.length} unpaid order(s) whose customer can still pay. If they do not pay, the stock comes back automatically in about ${minutes} minute(s); you can delete it then.`;
+}
+
 export async function deleteProduct(req, res, next) {
   try {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ error: "Invalid product id." });
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ error: "Product not found." });
-    const hasReservedOrSoldCodes = [...(product.codes || []), ...(product.variants || []).flatMap((variant) => variant.codes || [])].some((code) => code.status === "reserved" || code.status === "sold");
-    if (hasReservedOrSoldCodes) return res.status(409).json({ error: "Cannot delete a product that has reserved or sold codes." });
+    const hasSoldCodes = [...(product.codes || []), ...(product.variants || []).flatMap((variant) => variant.codes || [])].some((code) => code.status === "sold");
+    if (hasSoldCodes) return res.status(409).json({ error: "Cannot delete a product that has sold codes." });
+    const blocked = await unpaidOrderBlock({ productId: product._id }, "This product");
+    if (blocked) return res.status(409).json({ error: blocked });
     await ProductActivity.create({ productId: String(product._id), productName: product.name, action: "deleted", adminEmail: String(req.user.email || "").toLowerCase(), details: "Product deleted" });
     await Product.deleteOne({ _id: product._id });
     res.json({ deleted: true });
