@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { APIError } from "better-auth/api";
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
-import { emailOTP, jwt } from "better-auth/plugins";
+import { captcha, emailOTP, jwt } from "better-auth/plugins";
 import { oauthProvider } from "@better-auth/oauth-provider";
 import { config } from "../config/env.js";
 import { authStorage } from "./redis.js";
@@ -77,6 +77,14 @@ export const auth = config.authEnabled ? betterAuth({
   disabledPaths: ["/token"],
   plugins: [
     jwt({ disableSettingJwtHeader: true }),
+    // Cloudflare Turnstile on email sign-in, sign-up and password reset: the browser sends its token in the
+    // x-captcha-response header and Cloudflare confirms it before the password is checked.
+    ...(config.turnstileSecretKey ? [captcha({
+      provider: "cloudflare-turnstile",
+      secretKey: config.turnstileSecretKey,
+      // Tokens must come from our own site (Cloudflare's test keys report another hostname, so only in production).
+      ...(process.env.NODE_ENV === "production" ? { allowedHostnames: [new URL(config.frontendOrigin).hostname] } : {}),
+    })] : []),
     // Sign-up OTP: a 6-digit code, stored hashed in Redis for 5 minutes, 5 tries, emailed by the worker.
     ...(config.mailEnabled ? [emailOTP({
       overrideDefaultEmailVerification: true,

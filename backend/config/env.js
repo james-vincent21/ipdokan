@@ -92,6 +92,8 @@ export const config = {
   myproxyapiUserId: Number(process.env.MYPROXYAPI_USER_ID) || 0,
   googleClientId: process.env.GOOGLE_CLIENT_ID || "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+  // Cloudflare Turnstile secret key. When set, sign-in and sign-up need a passed Turnstile check.
+  turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY || "",
   authUrl,
   apiResource: process.env.API_RESOURCE || `${authUrl}/api`,
   adminEmails: [...new Set([

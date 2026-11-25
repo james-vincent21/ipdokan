@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { EmailOtpStep, needsEmailCode } from "@/components/ui/email-otp-step";
 import { useErrorToast } from "@/lib/toast";
+import { Turnstile, turnstileSiteKey } from "@/components/ui/turnstile";
 
 function goOn() {
   if (!new URLSearchParams(window.location.search).has("oauth_query")) window.location.href = "/profile";
@@ -17,17 +18,22 @@ export function BetterAuthSignIn() {
   const [busy, setBusy] = useState(false);
   // Email waiting for its 6-digit code (sign-up, or sign-in to an account that was never verified).
   const [codeEmail, setCodeEmail] = useState("");
+  // Cloudflare Turnstile token for the next email sign-in or sign-up (one use each).
+  const [captchaToken, setCaptchaToken] = useState("");
+  const turnstile = useRef(null);
 
   async function submit(event) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    if (turnstileSiteKey && !captchaToken) return setMessage("Please wait for the security check to finish.");
     setBusy(true);
     setMessage("");
     const credentials = { email: form.get("email"), password: form.get("password") };
+    const fetchOptions = turnstileSiteKey ? { headers: { "x-captcha-response": captchaToken } } : undefined;
     try {
       const result = mode === "signup"
-        ? await authClient.signUp.email({ ...credentials, name: form.get("name") })
-        : await authClient.signIn.email(credentials);
+        ? await authClient.signUp.email({ ...credentials, name: form.get("name") }, fetchOptions)
+        : await authClient.signIn.email(credentials, fetchOptions);
       if (needsEmailCode(mode, result)) return setCodeEmail(credentials.email);
       if (result.error) return setMessage(result.error.message || "Could not sign in.");
       goOn();
@@ -35,6 +41,7 @@ export function BetterAuthSignIn() {
       setMessage(error.message || "Could not reach the account server.");
     } finally {
       setBusy(false);
+      turnstile.current?.reset();
     }
   }
 
@@ -71,7 +78,8 @@ export function BetterAuthSignIn() {
           {mode === "signup" && <label>Name<input name="name" type="text" autoComplete="name" minLength={2} maxLength={80} required /></label>}
           <label>Email<input name="email" type="email" autoComplete="email" required /></label>
           <label>Password<input name="password" type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={mode === "signup" ? 10 : undefined} maxLength={128} required /></label>
-          <button className="auth-submit" type="submit" disabled={busy}>{busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}</button>
+          <Turnstile ref={turnstile} onToken={setCaptchaToken} />
+          <button className="auth-submit" type="submit" disabled={busy || (turnstileSiteKey && !captchaToken)}>{busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}</button>
         </form>
         </>}
       </section>
