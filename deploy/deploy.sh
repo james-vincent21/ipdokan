@@ -5,7 +5,10 @@ HOST="${HOST:-root@45.140.203.195}"
 PUBLIC_URL="${PUBLIC_URL:-https://ipdokan.com}"
 cd "$(dirname "$0")/.."
 
-ssh "$HOST" 'mkdir -p /var/www/ipdokan'
+# Visitors see the maintenance page from here until server-setup.sh finishes (it turns it off).
+ssh "$HOST" 'mkdir -p /var/www/ipdokan /var/www/ipdokan-maintenance && touch /var/www/ipdokan-maintenance/on && echo "Maintenance page on"'
+# If copying fails before server-setup.sh runs, turn the page off again.
+trap '[ $? -eq 0 ] || { ssh "$HOST" "rm -f /var/www/ipdokan-maintenance/on"; echo "Deploy failed; maintenance page off"; }' EXIT
 rsync -az --delete \
   --exclude node_modules --exclude .next --exclude .git --exclude .DS_Store \
   --exclude '.env' --exclude '.env.*' --include '.env.example' \

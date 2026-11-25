@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Under maintenance | IP DOKAN</title>
+<style>
+  :root { color-scheme: light dark; --bg: #f3f5fa; --card: #fff; --text: #111827; --muted: #5b6475; --line: #e3e7ef; --accent: #3978ef; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #070b12; --card: #0d1320; --text: #f3f6fc; --muted: #96a2b5; --line: #1d2636; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { width: 100%; max-width: 460px; border: 1px solid var(--line); border-radius: 18px; background: var(--card); padding: 36px 28px; text-align: center; }
+  .brand { margin: 0 0 22px; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+  .brand span { color: var(--accent); }
+  .spinner { width: 44px; height: 44px; margin: 0 auto 20px; border: 4px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+  h1 { margin: 0 0 8px; font-size: 24px; letter-spacing: -.02em; }
+  p { margin: 0 0 6px; color: var(--muted); }
+  .bn { margin-top: 14px; }
+  small { display: block; margin-top: 22px; color: var(--muted); font-size: 13px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <p class="brand"><span>IP</span> DOKAN</p>
+  <div class="spinner" aria-hidden="true"></div>
+  <h1>Site under maintenance</h1>
+  <p>We are updating the site. It will be back in a few minutes.</p>
+  <p class="bn">সাইটে আপডেট চলছে। কয়েক মিনিটের মধ্যে আবার চালু হবে।</p>
+  <small>This page reloads by itself. Need help? <a href="https://t.me/IpDokan">Message us on Telegram</a></small>
+</main>
+<script>setTimeout(function () { location.reload(); }, 30000);</script>
+</body>
+</html>

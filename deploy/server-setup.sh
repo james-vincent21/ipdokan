@@ -3,6 +3,13 @@
 set -euo pipefail
 APP_DIR=/var/www/ipdokan
 PUBLIC_URL="${PUBLIC_URL:-https://ipdokan.com}"
+MAINTENANCE_DIR=/var/www/ipdokan-maintenance
+
+# deploy.sh turns the maintenance page on before copying files; it goes off when this script ends,
+# whether the deploy worked or not (a failed build leaves the old version running).
+mkdir -p "$MAINTENANCE_DIR"
+cp "$APP_DIR/deploy/maintenance.html" "$MAINTENANCE_DIR/index.html"
+trap 'rm -f "$MAINTENANCE_DIR/on"; echo "Maintenance page off"' EXIT
 
 if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 20 ]; then
   apt-get update
@@ -32,6 +39,11 @@ NODE_ENV=production NEXT_PUBLIC_API_URL="$PUBLIC_URL" npx next build
 cp deploy/nginx.conf /etc/nginx/sites-available/ipdokan
 ln -sf /etc/nginx/sites-available/ipdokan /etc/nginx/sites-enabled/ipdokan
 rm -f /etc/nginx/sites-enabled/default
+# deploy/nginx.conf is HTTP only. Copying it removes the HTTPS block certbot added, so put it back
+# with the existing certificate (no new certificate is requested).
+if command -v certbot >/dev/null && [ -d /etc/letsencrypt/live/ipdokan.com ]; then
+  certbot install --nginx --cert-name ipdokan.com --redirect --non-interactive || echo "WARNING: certbot install failed; HTTPS may be off"
+fi
 nginx -t && systemctl reload nginx || systemctl restart nginx
 
 # pm2 cannot reload a process from fork into cluster mode: recreate the API and web processes once.
@@ -40,7 +52,7 @@ for app in ipdokan-api ipdokan-web; do
     pm2 delete "$app"
   fi
 done
-PUBLIC_URL="$PUBLIC_URL" pm2 startOrReload deploy/ecosystem.config.cjs --update-env
+PUBLIC_URL="$PUBLIC_URL" pm2 startOrReload deploy/ecosystem.config.cjs --update-env < /dev/null
 pm2 save
 pm2 startup systemd -u root --hp /root >/dev/null || true
 
@@ -49,4 +61,4 @@ if command -v ufw >/dev/null && ufw status | grep -q active; then
 fi
 
 sleep 3
-curl -fsS http://127.0.0.1/api/health && echo && echo "Deployed: $PUBLIC_URL"
+curl -fsS http://127.0.0.1:4000/api/health && echo && echo "Deployed: $PUBLIC_URL"
