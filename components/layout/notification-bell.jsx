@@ -17,6 +17,8 @@ export function NotificationBell({ signedIn }) {
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
+  // Where the list starts on phones and tablets (just under the bell), measured when it opens.
+  const [panelTop, setPanelTop] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [sound, setSound] = useSoundSetting();
   const boxRef = useRef(null);
@@ -80,11 +82,11 @@ export function NotificationBell({ signedIn }) {
   if (!signedIn) return null;
   return <>
     <div className="notify" ref={boxRef}>
-      <button type="button" className="notify-button" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} aria-expanded={open} onClick={() => setOpen(!open)}>
+      <button type="button" className="notify-button" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} aria-expanded={open} onClick={() => { if (!open) setPanelTop(Math.round((boxRef.current?.getBoundingClientRect().bottom || 78) + 10)); setOpen(!open); }}>
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" /><path d="M10 19a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
         {unread > 0 && <span className="notify-badge">{unread > 99 ? "99+" : unread}</span>}
       </button>
-      {open && <div className="notify-panel" role="dialog" aria-label="Notifications">
+      {open && <div className="notify-panel" role="dialog" aria-label="Notifications" style={panelTop ? { "--notify-top": `${panelTop}px` } : undefined}>
         <div className="notify-head">
           <strong className="notify-title">Notifications{unread > 0 && <small> · {unread} unread</small>}</strong>
           <button type="button" className="notify-icon-button" aria-pressed={sound} title={sound ? "Sound on" : "Sound off"} aria-label={sound ? "Turn notification sound off" : "Turn notification sound on"} onClick={toggleSound}><SoundIcon on={sound} /></button>

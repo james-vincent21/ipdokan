@@ -856,21 +856,46 @@ export async function confirmOrderPayment(req, res, next) {
   }
 }
 
+// Puts an unpaid order's reserved stock back: shared-stock plans get their count back, code plans get their
+// reserved codes marked available again.
+async function releaseReservedStock(order) {
+  if (order.variantId) {
+    const product = await Product.findById(order.productId);
+    const variant = product?.variants.id(order.variantId);
+    if (variant && variant.stockQuantity !== null && variant.stockQuantity !== undefined) {
+      await Product.updateOne({ _id: order.productId }, { $inc: { "variants.$[variant].stockQuantity": order.quantity || 1 } }, { arrayFilters: [{ "variant._id": order.variantId }] });
+    } else {
+      await Product.updateOne({ _id: order.productId }, { $set: { "variants.$[variant].codes.$[code].status": "available", "variants.$[variant].codes.$[code].orderId": null } }, { arrayFilters: [{ "variant._id": order.variantId }, { "code.orderId": order._id, "code.status": "reserved" }] });
+    }
+  } else {
+    await Product.updateOne({ _id: order.productId }, { $set: { "codes.$[code].status": "available", "codes.$[code].orderId": null } }, { arrayFilters: [{ "code.orderId": order._id, "code.status": "reserved" }] });
+  }
+}
+
+// Admin: permanently removes an order (for example a demo or test order). Income and order counts are
+// calculated from orders, so its amount no longer counts. A pending order's reserved stock goes back.
+// Codes of a paid order stay "sold" (they were already delivered), and no money is refunded.
+// Orders being paid or delivered right now cannot be deleted.
+export async function deleteOrder(req, res, next) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ error: "Invalid order id." });
+    const order = await Order.findOneAndDelete({ _id: req.params.id, status: { $ne: "processing" } });
+    if (!order) {
+      const exists = await Order.exists({ _id: req.params.id });
+      return res.status(exists ? 409 : 404).json({ error: exists ? "This order is being paid or delivered right now. Wait for it to finish, then delete it." : "Order not found." });
+    }
+    if (order.status === "pending") await releaseReservedStock(order);
+    await ProductActivity.create({ productId: String(order.productId), productName: order.productName, action: "order_deleted", adminEmail: String(req.user.email || "").toLowerCase(), details: `Order #${String(order._id).slice(-7)} (${order.status}, ${order.currency} ${Number(order.amount).toFixed(2)}, ${order.userEmail || order.userId}) deleted permanently${order.status === "pending" ? "; reserved stock returned" : ""}` });
+    res.json({ deleted: true, status: order.status, amount: order.amount, currency: order.currency });
+  } catch (error) { next(error); }
+}
+
 export async function cancelOrder(req, res, next) {
   try {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ error: "Invalid order id." });
     const order = await Order.findOneAndUpdate({ _id: req.params.id, status: "pending" }, { $set: { status: "cancelled" } }, { new: true });
     if (!order) return res.status(409).json({ error: "Only pending orders can be cancelled." });
-    if (order.variantId) {
-      const product = await Product.findById(order.productId);
-      const variant = product?.variants.id(order.variantId);
-      if (variant && variant.stockQuantity !== null && variant.stockQuantity !== undefined) {
-        await Product.updateOne({ _id: order.productId }, { $inc: { "variants.$[variant].stockQuantity": order.quantity || 1 } }, { arrayFilters: [{ "variant._id": order.variantId }] });
-      } else {
-        await Product.updateOne({ _id: order.productId }, { $set: { "variants.$[variant].codes.$[code].status": "available", "variants.$[variant].codes.$[code].orderId": null } }, { arrayFilters: [{ "variant._id": order.variantId }, { "code.orderId": order._id, "code.status": "reserved" }] });
-      }
-    }
-    else await Product.updateOne({ _id: order.productId }, { $set: { "codes.$[code].status": "available", "codes.$[code].orderId": null } }, { arrayFilters: [{ "code.orderId": order._id, "code.status": "reserved" }] });
+    await releaseReservedStock(order);
     await ProductActivity.create({ productId: String(order.productId), productName: order.productName, action: "order_cancelled", adminEmail: String(req.user.email || "").toLowerCase(), details: `Order #${String(order._id).slice(-7)} cancelled; ${order.variantName ? `${order.variantName}, ` : ""}${order.quantity || 1} unit(s) returned to stock` });
     res.json({ order });
   } catch (error) { next(error); }
@@ -893,29 +918,7 @@ export async function expirePendingOrders() {
       { new: true }
     );
     if (!updated) continue;
-    if (order.variantId) {
-      const product = await Product.findById(order.productId);
-      const variant = product?.variants.id(order.variantId);
-      if (variant && variant.stockQuantity !== null && variant.stockQuantity !== undefined) {
-        await Product.updateOne(
-          { _id: order.productId },
-          { $inc: { "variants.$[variant].stockQuantity": order.quantity || 1 } },
-          { arrayFilters: [{ "variant._id": order.variantId }] }
-        );
-      } else {
-        await Product.updateOne(
-          { _id: order.productId },
-          { $set: { "variants.$[variant].codes.$[code].status": "available", "variants.$[variant].codes.$[code].orderId": null } },
-          { arrayFilters: [{ "variant._id": order.variantId }, { "code.orderId": order._id, "code.status": "reserved" }] }
-        );
-      }
-    } else {
-      await Product.updateOne(
-        { _id: order.productId },
-        { $set: { "codes.$[code].status": "available", "codes.$[code].orderId": null } },
-        { arrayFilters: [{ "code.orderId": order._id, "code.status": "reserved" }] }
-      );
-    }
+    await releaseReservedStock(order);
     await ProductActivity.create({ productId: String(order.productId), productName: order.productName, action: "order_cancelled", adminEmail: "system", details: `Order #${String(order._id).slice(-7)} expired; ${order.variantName ? `${order.variantName}, ` : ""}${order.quantity || 1} unit(s) returned to stock` });
     cancelledCount += 1;
   }

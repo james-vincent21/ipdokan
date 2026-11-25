@@ -1,7 +1,7 @@
 import express, { Router } from "express";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { requireAdmin } from "../middleware/admin.middleware.js";
-import { addAdminEmail, addCodes, addProduct, adminOrders, adminOverview, adminProducts, adminReviews, adminUsers, cancelOrder, confirmOrderPayment, deleteProduct, deleteProductReview, editProduct, listAdminEmails, productActivity, removeAdminEmail, replyToProductReview, setProductStock } from "../controllers/store.controller.js";
+import { addAdminEmail, addCodes, addProduct, adminOrders, adminOverview, adminProducts, adminReviews, adminUsers, cancelOrder, confirmOrderPayment, deleteOrder, deleteProduct, deleteProductReview, editProduct, listAdminEmails, productActivity, removeAdminEmail, replyToProductReview, setProductStock } from "../controllers/store.controller.js";
 import { IMAGE_TYPES, MAX_IMAGE_BYTES, imageTooLarge, uploadProductImage } from "../controllers/upload.controller.js";
 import { adminGetSiteStatus, setDevMode } from "../controllers/site-status.controller.js";
 import { banUser, creditUserWallet, debitUserWallet, deleteUser, lookupUser, searchUsers, unbanUser } from "../controllers/admin-users.controller.js";
@@ -38,6 +38,7 @@ router.get("/product-activity", productActivity);
 router.get("/orders", adminOrders);
 router.post("/orders/:id/confirm-payment", confirmOrderPayment);
 router.post("/orders/:id/cancel", cancelOrder);
+router.delete("/orders/:id", deleteOrder);
 router.post("/orders/:id/supplier-retry", retrySupplierDelivery);
 router.patch("/orders/:id/supplier-delivery", setSupplierDelivery);
 router.get("/supplier/status", supplierStatus);

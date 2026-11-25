@@ -1569,3 +1569,20 @@ html[data-theme="light"] .app-toast { background: #fff; color: #111827; box-shad
 html[data-theme="light"] .app-toast button { color: #6b7280; }
 html[data-theme="light"] .app-toast button:hover { background: #f1f5f9; color: #111827; }
 html[data-theme="light"] .app-toast p a { color: #1d4fd7; }
+
+/* 1301–1600px: the one-row header is tight (more so for admins), so shorten it: "Admin", Cart as an icon,
+   no icons in front of the main links. Below 1301px the menu button takes over. */
+@media (min-width: 1301px) and (max-width: 1600px) {
+  .nav-label-extra, .cart-nav-label { display: none; }
+  .nav-links > .nav-link .nav-icon, .nav-links > .nav-dropdown > .nav-link .nav-icon:first-child { display: none; }
+}
+
+/* Phones and tablets: the bell is not at the screen edge (the menu button is), so the list is placed
+   against the screen edges under the header instead of hanging off the bell. */
+@media (max-width: 1300px) {
+  .notify-panel { position: fixed; top: var(--notify-top, 88px); right: 12px; left: auto; width: min(380px, calc(100vw - 24px)); max-height: calc(100dvh - var(--notify-top, 88px) - 16px); }
+}
+html[data-theme="light"] .notify-all-link, html[data-theme="light"] .notify-title small { color: #1d4fd7; }
+.admin-delete-order { display: block; min-height: 30px; margin-top: 6px; border: 1px solid rgb(239 68 68 / 40%); border-radius: 8px; background: transparent; padding: 0 10px; color: #f87171; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.admin-delete-order:hover { background: rgb(239 68 68 / 10%); }
+html[data-theme="light"] .admin-delete-order { color: #dc2626; }

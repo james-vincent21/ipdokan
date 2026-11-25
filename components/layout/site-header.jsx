@@ -310,11 +310,11 @@ export function SiteHeader() {
           </div>
           <a className="nav-link" data-nav-key="support" href={supportItem.href} onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name={supportItem.icon} /></span>{supportItem.label}</a>
           <a className="nav-link account-nav-link" href="/profile" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="user" /></span>Account</a>
-          {isAdmin && <a className="nav-link" data-nav-key="admin" href="/admin" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="dashboard" /></span>Admin dashboard</a>}
+          {isAdmin && <a className="nav-link" data-nav-key="admin" href="/admin" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="dashboard" /></span><span>Admin<span className="nav-label-extra"> dashboard</span></span></a>}
           <div className="nav-actions">
             {/* Wallet and cart sit on the right, next to the account controls. */}
             <a className="nav-link nav-action-link wallet-nav-link" data-nav-key="wallet" href="/wallet" title="Wallet" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="wallet" /></span><span className="wallet-nav-label">Wallet</span><WalletBalance signedIn={Boolean(session?.user)} currency={currency} /></a>
-            <a className="nav-link nav-action-link cart-nav-link" data-nav-key="cart" href="/checkout" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="cart" />{itemsInCart > 0 && <span className="cart-count" aria-label={`${itemsInCart} in cart`}>{itemsInCart > 99 ? "99+" : itemsInCart}</span>}</span>Cart</a>
+            <a className="nav-link nav-action-link cart-nav-link" data-nav-key="cart" href="/checkout" title="Cart" onClick={() => setMenuOpen(false)}><span className="nav-icon"><Icon name="cart" />{itemsInCart > 0 && <span className="cart-count" aria-label={`${itemsInCart} in cart`}>{itemsInCart > 99 ? "99+" : itemsInCart}</span>}</span><span className="cart-nav-label">Cart</span></a>
             <ThemeToggle />
             <div className="nav-currency-toggle" aria-label="Choose display currency"><button type="button" className={currency === "USD" ? "is-selected" : ""} aria-pressed={currency === "USD"} onClick={() => setCurrency("USD")}>USD</button><button type="button" className={currency === "BDT" ? "is-selected" : ""} aria-pressed={currency === "BDT"} onClick={() => setCurrency("BDT")}>BDT</button></div>
             {session?.user ? <><a className="sign-in signed-in-user" href="/profile" title="Open your account" onClick={() => setMenuOpen(false)}>
