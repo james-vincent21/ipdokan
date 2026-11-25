@@ -9,27 +9,17 @@ async function startServer() {
     console.log("Authentication is disabled. Configure credentials and set AUTH_ENABLED=true to enable it.");
   }
 
-  const { default: app } = await import("./app.js");
-  const { expirePendingOrders } = await import("./controllers/store.controller.js");
-  expirePendingOrders().catch((error) => console.error("Could not expire pending orders:", error.message));
-  setInterval(() => {
-    expirePendingOrders().catch((error) => console.error("Could not expire pending orders:", error.message));
-  }, 60 * 1000).unref();
-  // Proxies of supplier orders that were not ready at payment time are fetched again here.
-  const { refreshSupplierDeliveries, syncSupplierProducts } = await import("./controllers/supplier.controller.js");
-  const { supplierConfigured } = await import("./lib/myproxyapi.js");
-  // MyProxyApi plans are loaded into the catalog automatically: at start, then every 6 hours.
-  if (config.authEnabled && supplierConfigured()) {
-    const syncProducts = () => syncSupplierProducts().then((summary) => {
-      const added = summary.reduce((sum, item) => sum + (item.added || 0), 0);
-      if (added) console.log(`MyProxyApi sync: ${added} new plan(s) added without a price.`);
-    }).catch((error) => console.error("MyProxyApi product sync failed:", error.message));
-    syncProducts();
-    setInterval(syncProducts, 6 * 60 * 60 * 1000).unref();
+  const { redisEnabled, waitForRedis } = await import("./lib/redis.js");
+  if (redisEnabled) {
+    await waitForRedis();
+    console.log("Redis connected. Scheduled jobs and emails run in the worker (backend/worker.js).");
+  } else {
+    // No Redis (local development): scheduled jobs run here on timers.
+    const { runTasksInProcess } = await import("./lib/background-tasks.js");
+    await runTasksInProcess();
   }
-  setInterval(() => {
-    refreshSupplierDeliveries().catch((error) => console.error("Could not refresh supplier deliveries:", error.message));
-  }, 30 * 1000).unref();
+
+  const { default: app } = await import("./app.js");
 
   // One HTTP server for the API and Socket.IO (live notifications and cart sync at /api/socket.io).
   const { createServer } = await import("node:http");

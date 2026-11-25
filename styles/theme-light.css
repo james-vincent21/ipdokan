@@ -89,6 +89,9 @@ html[data-theme="light"] .auth-google {
 html[data-theme="light"] .auth-message {
     color: rgb(64 73 91)
 }
+html[data-theme="light"] .auth-otp-actions button {
+    color: rgb(8 55 176)
+}
 html[data-theme="light"] .profile-panel {
     border: 1px solid rgb(15 23 42 / 13.2%);
     background: linear-gradient(180deg, rgb(254 254 255), rgb(251 252 253));

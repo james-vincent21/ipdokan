@@ -78,6 +78,13 @@ a { color: inherit; }
 .auth-google { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: center; gap: 10px; border: 1px solid rgb(255 255 255 / 15%); border-radius: 9px; background: #f7f8fa; color: #252a32; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .google-logo { width: 18px; height: 18px; flex: 0 0 18px; }
 .auth-message { margin: 12px 0 0; color: #a4adbf; font-size: 12px; line-height: 1.5; text-align: center; }
+/* Email code step (sign-up OTP) */
+.auth-otp-intro { margin: 4px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.auth-otp-intro strong { color: var(--foreground); }
+.auth-form .auth-otp-input { height: 52px; font-size: 24px; font-weight: 700; letter-spacing: .5em; text-align: center; font-variant-numeric: tabular-nums; }
+.auth-otp-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 14px; }
+.auth-otp-actions button { border: 0; background: none; padding: 4px 0; color: #8caaf7; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.auth-otp-actions button:disabled { color: var(--muted); cursor: default; }
 .profile-page { display: grid; min-height: 68vh; place-items: center; padding: 60px 20px 90px; background: var(--background); }
 .profile-panel { width: min(100%, 470px); border: 1px solid rgb(255 255 255 / 11%); border-radius: 18px; background: linear-gradient(180deg, #151c2e, #111727); padding: 32px; box-shadow: 0 1px 0 rgb(255 255 255 / 6%) inset, 0 24px 60px rgb(0 0 0 / 55%), 0 0 0 1px rgb(0 0 0 / 35%); }
 .profile-panel h1 { margin: 9px 0 6px; color: #f4f6fb; font-size: 30px; letter-spacing: -.04em; }

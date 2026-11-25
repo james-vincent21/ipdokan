@@ -104,4 +104,16 @@ export const config = {
   demoAdminEmail,
   demoAdminPassword,
   demoAdminName: process.env.DEMO_ADMIN_NAME || "Demo Admin",
+  // Redis (Docker): sessions, OTP codes, rate limits, job queues, Socket.IO across processes.
+  redisUrl: process.env.REDIS_URL || "",
+  // Outgoing email (sign-up OTP codes). Gmail: smtp.gmail.com, port 465, the address and an app password.
+  mail: {
+    host: process.env.SMTP_HOST || "smtp.gmail.com",
+    port: Number(process.env.SMTP_PORT || 465),
+    user: process.env.SMTP_USER || "",
+    pass: (process.env.SMTP_PASS || "").replace(/\s+/g, ""),
+    from: process.env.MAIL_FROM || (process.env.SMTP_USER ? `IP Dokan <${process.env.SMTP_USER}>` : ""),
+  },
 };
+// Email OTP is required at sign-up only once an email account is configured to send the codes.
+config.mailEnabled = Boolean(config.mail.user && config.mail.pass);

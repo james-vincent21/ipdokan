@@ -79,6 +79,9 @@ html[data-theme="dark"] .auth-divider::after {
 html[data-theme="dark"] .auth-google {
     background: #f7f8fa
 }
+html[data-theme="dark"] .auth-otp-actions button {
+    background: none
+}
 html[data-theme="dark"] .profile-page {
     background: var(--background)
 }

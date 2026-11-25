@@ -12,6 +12,8 @@ import { cryptomusWebhook } from "./controllers/cryptomus.controller.js";
 const app = express();
 
 app.disable("x-powered-by");
+// nginx on the same machine passes the visitor's address in X-Forwarded-For.
+app.set("trust proxy", "loopback");
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (origin === config.frontendOrigin) {

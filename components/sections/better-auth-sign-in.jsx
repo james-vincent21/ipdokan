@@ -2,11 +2,19 @@
 
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { EmailOtpStep, needsEmailCode } from "@/components/ui/email-otp-step";
+
+function goOn() {
+  if (!new URLSearchParams(window.location.search).has("oauth_query")) window.location.href = "/profile";
+  else window.location.reload();
+}
 
 export function BetterAuthSignIn() {
   const [mode, setMode] = useState("signin");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  // Email waiting for its 6-digit code (sign-up, or sign-in to an account that was never verified).
+  const [codeEmail, setCodeEmail] = useState("");
 
   async function submit(event) {
     event.preventDefault();
@@ -18,8 +26,9 @@ export function BetterAuthSignIn() {
       const result = mode === "signup"
         ? await authClient.signUp.email({ ...credentials, name: form.get("name") })
         : await authClient.signIn.email(credentials);
+      if (needsEmailCode(mode, result)) return setCodeEmail(credentials.email);
       if (result.error) return setMessage(result.error.message || "Could not sign in.");
-      if (!new URLSearchParams(window.location.search).has("oauth_query")) window.location.href = "/profile";
+      goOn();
     } catch (error) {
       setMessage(error.message || "Could not reach the account server.");
     } finally {
@@ -47,7 +56,8 @@ export function BetterAuthSignIn() {
     <main className="profile-page">
       <section className="profile-panel" aria-labelledby="better-auth-title">
         <span className="auth-kicker">IP DOKAN ACCOUNT</span>
-        <h1 id="better-auth-title">{mode === "signup" ? "Create your account" : "Welcome back"}</h1>
+        <h1 id="better-auth-title">{codeEmail ? "Check your email" : mode === "signup" ? "Create your account" : "Welcome back"}</h1>
+        {codeEmail ? <EmailOtpStep email={codeEmail} onDone={goOn} onBack={() => { setCodeEmail(""); setMessage(""); }} /> : <>
         <p className="profile-intro">Sign in or create an account to continue.</p>
         <div className="auth-mode-switch" role="tablist" aria-label="Account action">
           <button type="button" role="tab" aria-selected={mode === "signin"} className={mode === "signin" ? "is-active" : ""} onClick={() => setMode("signin")}>Sign in</button>
@@ -62,6 +72,7 @@ export function BetterAuthSignIn() {
         <div className="auth-divider"><span>or</span></div>
         <button className="auth-google" type="button" disabled={busy} onClick={signInWithGoogle}>Continue with Google</button>
         {message && <p className="profile-message" role="status">{message}</p>}
+        </>}
       </section>
     </main>
   );

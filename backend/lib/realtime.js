@@ -5,13 +5,22 @@
 //   server → client  "cart"          { items, updatedAt }        (the newest saved cart)
 //   client → server  "cart:save"     { items, updatedAt }        (after every local cart change)
 import { Server } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
+import { Emitter } from "@socket.io/redis-emitter";
 import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "./auth.js";
 import { config } from "../config/env.js";
 import { AdminEmail } from "../models/admin-email.model.js";
 import { Cart, Notification } from "../models/notification.model.js";
+import { createRedis, redisEnabled } from "./redis.js";
 
 let io = null;
+// The worker has no Socket.IO server: it publishes through Redis and the API processes deliver.
+let emitter = null;
+const target = () => io || emitter;
+export function initRealtimeEmitter() {
+  if (redisEnabled && !io) emitter ??= new Emitter(createRedis());
+}
 const MAX_CART_ITEMS = 50;
 
 async function isAdminEmail(email) {
@@ -33,6 +42,8 @@ export function initRealtime(httpServer) {
     cors: { origin: config.frontendOrigin, credentials: true },
     maxHttpBufferSize: 64 * 1024,
   });
+  // Several API processes (pm2 cluster): rooms and broadcasts are shared through Redis.
+  if (redisEnabled) io.adapter(createAdapter(createRedis(), createRedis()));
 
   // Signs the socket in with the same session cookie the site uses. Guests may connect but get nothing.
   io.use(async (socket, next) => {
@@ -84,13 +95,13 @@ export async function notifyUser(userId, { type, title, message = "", link = "" 
   if (!userId) return;
   try {
     const doc = await Notification.create({ userId: String(userId), type, title, message, link });
-    io?.to(`user:${userId}`).emit("notification", publicNotification(doc));
+    target()?.to(`user:${userId}`).emit("notification", publicNotification(doc));
   } catch (error) { console.error("Could not send notification:", error.message); }
 }
 
 // Live-only message to every admin who has the site open (not saved).
 export function notifyAdmins({ type, title, message = "", link = "/admin" }) {
-  io?.to("admins").emit("notification", { id: `admin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, type, title, message, link, read: false, createdAt: new Date(), live: true });
+  target()?.to("admins").emit("notification", { id: `admin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, type, title, message, link, read: false, createdAt: new Date(), live: true });
 }
 
 export async function listNotifications(userId) {
