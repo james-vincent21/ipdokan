@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { productHref } from "@/lib/proxy-links";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { EmailOtpStep, needsEmailCode } from "@/components/ui/email-otp-step";
+import { Turnstile, turnstileSiteKey } from "@/components/ui/turnstile";
 import { cartCount, onCartChange, readCart } from "@/lib/cart-store";
 import { useErrorToast } from "@/lib/toast";
 
@@ -76,6 +77,9 @@ export function SiteHeader() {
   const [authBusy, setAuthBusy] = useState(false);
   // Email waiting for its 6-digit code after sign-up (or sign-in to an unverified account).
   const [authCodeEmail, setAuthCodeEmail] = useState("");
+  // Cloudflare Turnstile token for the next email sign-in or sign-up (one use each).
+  const [authCaptcha, setAuthCaptcha] = useState("");
+  const authTurnstile = useRef(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currency, setCurrency] = useCurrencyPreference();
   const itemsInCart = useCartCount();
@@ -222,19 +226,23 @@ export function SiteHeader() {
   async function submitAuth(event) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    if (turnstileSiteKey && !authCaptcha) { setAuthMessage("Please wait for the security check to finish."); return; }
     setAuthBusy(true);
     setAuthMessage("");
+    const fetchOptions = turnstileSiteKey ? { headers: { "x-captcha-response": authCaptcha } } : undefined;
     try {
       const credentials = { email: form.get("email"), password: form.get("password") };
       const result = authMode === "signup"
-        ? await authClient.signUp.email({ ...credentials, name: form.get("name") })
-        : await authClient.signIn.email(credentials);
+        ? await authClient.signUp.email({ ...credentials, name: form.get("name") }, fetchOptions)
+        : await authClient.signIn.email(credentials, fetchOptions);
       if (needsEmailCode(authMode, result)) return setAuthCodeEmail(credentials.email);
       if (result.error) throw new Error(result.error.message || "Could not sign in.");
       afterAuth();
     } catch (error) {
       setAuthMessage(error.message || "Could not reach the account server.");
     } finally {
+      // Each token works once; get a fresh one for the next attempt.
+      authTurnstile.current?.reset();
       setAuthBusy(false);
     }
   }
@@ -380,7 +388,8 @@ export function SiteHeader() {
             {authMode === "signup" && <label>Name<input type="text" name="name" autoComplete="name" placeholder="Your name" required /></label>}
             <label>Email<input type="email" name="email" autoComplete="email" placeholder="you@example.com" required /></label>
             <label>Password<input type="password" name="password" autoComplete={authMode === "signup" ? "new-password" : "current-password"} placeholder="Enter your password" minLength={authMode === "signup" ? 10 : undefined} maxLength={128} required /></label>
-            <button className="auth-submit" type="submit" disabled={authBusy}>{authBusy ? "Please wait…" : authMode === "signup" ? "Create account" : "Sign in"}</button>
+            <Turnstile ref={authTurnstile} onToken={setAuthCaptcha} />
+            <button className="auth-submit" type="submit" disabled={authBusy || (turnstileSiteKey && !authCaptcha)}>{authBusy ? "Please wait…" : authMode === "signup" ? "Create account" : "Sign in"}</button>
           </form>
           </>}
         </section>
