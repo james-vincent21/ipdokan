@@ -3,7 +3,10 @@ html[data-theme="dark"] body {
     background: var(--background)
 }
 html[data-theme="dark"] .site-header {
-    background: rgb(33 34 38)
+    background: transparent
+}
+html[data-theme="dark"] .site-header.is-scrolled {
+    background: rgb(48 50 55 / 75%)
 }
 html[data-theme="dark"] .nav-link:hover,
 html[data-theme="dark"] .nav-link.is-active {
@@ -828,7 +831,3 @@ html[data-theme="dark"] {
   --background: #1f2125;
   --surface: #272a30;
 }
-/* Nav: solid black at the top of the page, the site's ash grey once the page is scrolled
-   (components/layout/site-header.jsx adds .is-scrolled). */
-html[data-theme="dark"] .site-header { background: #000; transition: background-color .3s ease; }
-html[data-theme="dark"] .site-header.is-scrolled { background: #232529; }

@@ -65,7 +65,7 @@ export function SiteHeader() {
   const itemsInCart = useCartCount();
   const headerRef = useRef(null);
 
-  // Marks the header once the page is scrolled (dark mode: black at the top, ash grey after).
+  // Marks the header once the page is scrolled (transparent at the top, a see-through tint after).
   useEffect(() => {
     const header = headerRef.current;
     if (!header) return undefined;

@@ -19,7 +19,9 @@ a { color: inherit; }
 .container { width: min(100%, 1080px); margin-inline: auto; }
 
 /* Floating nav: sits a little below the top of the window with rounded corners, and stays there while scrolling. */
-.site-header { position: sticky; top: 12px; z-index: 5; margin: 12px 12px 0; border: 1px solid var(--line); border-radius: 18px; background: #0b0e16; box-shadow: 0 10px 30px rgb(0 0 0 / 22%); }
+.site-header { position: sticky; top: 12px; z-index: 5; margin: 12px 12px 0; border: 1px solid var(--line); border-radius: 18px; background: transparent; transition: background-color .3s ease, box-shadow .3s ease; }
+/* Transparent at the top of the page; once scrolled, a see-through tint with a light blur keeps the links readable. */
+.site-header.is-scrolled { background: rgb(35 37 41 / 75%); box-shadow: 0 10px 30px rgb(0 0 0 / 22%); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 .nav-shell { display: flex; width: min(100% - 64px, 1720px); min-height: 82px; margin: 0 auto; align-items: center; gap: 26px; }
 .brand { position: relative; display: inline-flex; width: 280px; height: 58px; flex: 0 0 280px; align-items: center; text-decoration: none; }
 .brand-logo { position: absolute; top: 50%; left: 0; display: block; width: 280px; height: 94px; max-width: none; object-fit: contain; transform: translateY(-50%); transform-origin: left center; transition: transform .25s cubic-bezier(.34, 1.4, .5, 1); }
