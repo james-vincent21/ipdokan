@@ -149,6 +149,10 @@ ${SCOPE} .brand-logo, ${SCOPE} .footer-logo img { filter: invert(1) hue-rotate(1
 ${SCOPE} .proxy-type-card.is-selected .proxy-type-icon { color: #fff; }
 /* Cards are white with a soft shadow instead of the glow they have on dark. */
 ${SCOPE} .profile-card, ${SCOPE} .admin-card { background: #fff; box-shadow: 0 1px 2px rgb(15 23 42 / 6%), 0 8px 24px rgb(15 23 42 / 6%); }
+/* Glass product cards in light mode: off-white at 30% with a white top edge and a soft blue-grey shadow. */
+${SCOPE} .popular-product-card, ${SCOPE} .store-product-card, ${SCOPE} .proxy-plan-card, ${SCOPE} .proxy-type-card:not(.is-selected) { border: 1px solid rgb(255 255 255 / 90%); background: rgb(245 242 235 / 30%); box-shadow: inset 0 1px 0 #fff, 0 2px 0 rgb(140 155 190 / 35%), 0 4px 0 rgb(140 155 190 / 25%), 0 6px 0 rgb(140 155 190 / 15%), 0 16px 30px rgb(40 70 140 / 14%); }
+${SCOPE} .popular-product-card:hover, ${SCOPE} .store-product-card:hover, ${SCOPE} .proxy-type-card:not(.is-selected):hover { border-color: rgb(47 107 255 / 35%); box-shadow: inset 0 1px 0 #fff, 0 2px 0 rgb(120 145 200 / 40%), 0 5px 0 rgb(120 145 200 / 28%), 0 8px 0 rgb(120 145 200 / 16%), 0 26px 40px rgb(47 107 255 / 20%); }
+${SCOPE} .proxy-plan-card.is-selected { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue), inset 0 1px 0 #fff, 0 14px 34px rgb(47 107 255 / 16%); }
 `;
 
 const source = postcss.parse(readFileSync(SOURCE, "utf8"));

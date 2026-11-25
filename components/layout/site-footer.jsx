@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { categoryHref } from "@/lib/proxy-links";
 
 // Same destinations as the header nav (proxy categories open the proxy store).
@@ -18,7 +19,7 @@ export function SiteFooter() {
     <footer className="site-footer" id="footer">
       <div className="footer-main">
         <div className="footer-brand-column">
-          <a className="footer-logo" href="/" aria-label="IP Dokan home"><img src="/ip-dokan-logo.svg" alt="IP Dokan" /></a>
+          <Link className="footer-logo" href="/" aria-label="IP Dokan home"><img src="/ip-dokan-logo.svg" alt="IP Dokan" /></Link>
           <p>Trusted by thousands, delivering premium IP and proxy solutions with speed, security, and reliability.</p>
           <h2>Follow Us</h2>
           <div className="footer-social-links">
@@ -35,12 +36,12 @@ export function SiteFooter() {
         </div>
         <nav className="footer-column" aria-label="Product categories">
           <h2>Categories</h2>
-          {categories.map(([label, href]) => <a href={href} key={label}>{label}</a>)}
+          {categories.map(([label, href]) => <Link href={href} key={label}>{label}</Link>)}
         </nav>
         <nav className="footer-column" aria-label="Useful links">
           <h2>Useful Links</h2>
-          {usefulLinks.map(([label, href]) => <a href={href} key={label}>{label}</a>)}
-          <a href="/#support">My Wallet</a>
+          {usefulLinks.map(([label, href]) => <Link href={href} key={label}>{label}</Link>)}
+          <Link href="/wallet">My Wallet</Link>
         </nav>
         <nav className="footer-column" aria-label="Policies">
           <h2>Terms and<br />Conditions</h2>
@@ -60,7 +61,7 @@ export function SiteFooter() {
       </div>
       <div className="footer-bottom">
         <p>Based on <strong>IPdokan</strong> Copyright © {new Date().getFullYear()} IPDokan. All Rights Reserved.</p>
-        <div className="footer-credit"><strong>Built by James Vincent</strong><span>Software &amp; AI/ML Engineer</span></div>
+        <div className="footer-credit"><strong>Developed by <span className="footer-credit-brand">BytNext</span></strong><span>Software &amp; AI/ML Solutions</span></div>
         <div className="footer-bottom-actions">
           <img className="footer-zinipay" src="/zinipay-1.webp" alt="ZiniPay" />
           <span className="footer-binance" aria-label="Binance Wallet supported">

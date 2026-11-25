@@ -1,6 +1,8 @@
 import "@/styles/globals.css";
 import "@/styles/theme-light.css";
+import "@/styles/theme-dark.css";
 import { DEFAULT_THEME, THEME_SCRIPT } from "@/components/layout/theme-toggle";
+import { CardTilt } from "@/components/ui/card-tilt";
 
 export const metadata = {
   title: "IP DOKAN | Proxy & Server Solutions",
@@ -14,7 +16,7 @@ export default function RootLayout({ children }) {
         {/* Applies the visitor's saved theme before the first paint, so the page never flashes the wrong theme. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
-      <body>{children}</body>
+      <body>{children}<CardTilt /></body>
     </html>
   );
 }
