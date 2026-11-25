@@ -144,7 +144,7 @@ ${SCOPE} {
   --line: rgb(15 23 42 / 11%);
 }
 /* The logo has white lettering: show it dark, keep its blue. */
-${SCOPE} .brand-logo, ${SCOPE} .footer-logo img { filter: invert(1) hue-rotate(180deg) saturate(1.3); }
+${SCOPE} .brand-logo, ${SCOPE} .footer-logo img, ${SCOPE} .pl-logo { filter: invert(1) hue-rotate(180deg) saturate(1.3); }
 /* Icon inside the selected (blue) proxy type card stays white. */
 ${SCOPE} .proxy-type-card.is-selected .proxy-type-icon { color: #fff; }
 /* Cards are white with a soft shadow instead of the glow they have on dark. */

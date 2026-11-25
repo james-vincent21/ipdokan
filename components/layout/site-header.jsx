@@ -10,6 +10,15 @@ import { productHref } from "@/lib/proxy-links";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { cartCount, onCartChange, readCart } from "@/lib/cart-store";
 
+// The signed-in user's photo (from their Google account), or their first letter when there is none
+// or it fails to load. Google photos are loaded without a referrer, which Google requires.
+function UserAvatar({ user }) {
+  const [broken, setBroken] = useState(false);
+  const letter = (user.name || user.email || "U").slice(0, 1).toUpperCase();
+  if (user.image && !broken) return <img className="signed-in-avatar signed-in-photo" src={user.image} alt="" referrerPolicy="no-referrer" onError={() => setBroken(true)} />;
+  return <span className="signed-in-avatar">{letter}</span>;
+}
+
 // Number of items in the cart, kept live (this tab, other tabs and, when signed in, other devices).
 const useCartCount = () => useSyncExternalStore(onCartChange, () => cartCount(readCart()), () => 0);
 
@@ -296,7 +305,7 @@ export function SiteHeader() {
             <ThemeToggle />
             <div className="nav-currency-toggle" aria-label="Choose display currency"><button type="button" className={currency === "USD" ? "is-selected" : ""} aria-pressed={currency === "USD"} onClick={() => setCurrency("USD")}>USD</button><button type="button" className={currency === "BDT" ? "is-selected" : ""} aria-pressed={currency === "BDT"} onClick={() => setCurrency("BDT")}>BDT</button></div>
             {session?.user ? <><a className="sign-in signed-in-user" href="/profile" title="Open your account" onClick={() => setMenuOpen(false)}>
-              <span className="signed-in-avatar">{(session.user.name || session.user.email || "U").slice(0, 1).toUpperCase()}</span>
+              <UserAvatar user={session.user} />
               <span>{session.user.name || "Account"}</span>
             </a><button className="sign-in sign-out-button" type="button" onClick={signOut}>Sign out</button></> : sessionPending ? <span className="nav-session-loading" aria-label="Checking sign-in status" /> : <button className="sign-in" type="button" onClick={() => { setMenuOpen(false); setAuthMode("signin"); setAuthMessage(""); setAuthOpen(true); }}>
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 16l4-4-4-4m4 4H3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>

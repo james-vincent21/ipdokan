@@ -3,6 +3,7 @@ import "@/styles/theme-light.css";
 import "@/styles/theme-dark.css";
 import { DEFAULT_THEME, THEME_SCRIPT } from "@/components/layout/theme-toggle";
 import { CardTilt } from "@/components/ui/card-tilt";
+import { PRELOADER_HEAD_SCRIPT, SitePreloader } from "@/components/layout/site-preloader";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
 // The tab icon, Apple home-screen icon and /favicon.ico come from app/icon.png, app/apple-icon.png
@@ -28,9 +29,13 @@ export default function RootLayout({ children }) {
       <head>
         {/* Applies the visitor's saved theme before the first paint, so the page never flashes the wrong theme. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        {/* The logo is the first thing on the loading screen and in the header: fetch it first. */}
+        <link rel="preload" as="image" href="/ip-dokan-logo.svg" fetchPriority="high" />
+        {/* Skips the loading screen when it was already shown in this browser session. */}
+        <script dangerouslySetInnerHTML={{ __html: PRELOADER_HEAD_SCRIPT }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA).replace(/</g, "\\u003c") }} />
       </head>
-      <body>{children}<CardTilt /></body>
+      <body><SitePreloader />{children}<CardTilt /></body>
     </html>
   );
 }

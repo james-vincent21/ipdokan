@@ -157,6 +157,7 @@ a { color: inherit; }
 .signed-in-user { max-width: 210px; overflow: hidden; }
 .signed-in-user > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .signed-in-avatar { display: grid; width: 24px; height: 24px; flex: 0 0 24px; place-items: center; border-radius: 50%; background: rgb(255 255 255 / 20%); color: white; font-size: 11px; }
+.signed-in-photo { object-fit: cover; box-shadow: 0 0 0 2px rgb(255 255 255 / 70%); }
 .nav-session-loading { display: inline-block; width: 94px; height: 40px; border-radius: 10px; background: rgb(255 255 255 / 5%); }
 .menu-toggle { display: none; }
 
@@ -1379,3 +1380,42 @@ html[data-theme="light"] .nav-link-highlight.is-current, html[data-theme="light"
   .notify + .nav-search-trigger { margin-left: 4px; }
   .notify-button { width: 34px; height: 34px; }
 }
+
+/* Loading screen (components/layout/site-preloader.jsx). Hidden once loaded (html.pl-done) or when
+   already shown in this browser session (html.pl-skip). */
+#site-preloader { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; background: #121317; color: #e8ecf5; transition: opacity .45s ease, visibility .45s; }
+html.pl-skip #site-preloader { display: none; }
+html.pl-done #site-preloader { visibility: hidden; opacity: 0; pointer-events: none; }
+.pl-inner { display: grid; width: min(92vw, 620px); justify-items: center; gap: 18px; }
+.pl-logo { display: block; width: min(64vw, 300px); height: auto; }
+.pl-logo-wrap { display: block; animation: pl-logo-in .9s cubic-bezier(.2, .9, .3, 1.2) both, pl-logo-glow 2.4s ease-in-out .9s infinite; }
+@keyframes pl-logo-in { from { opacity: 0; transform: translateY(14px) scale(.86); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes pl-logo-glow { 0%, 100% { filter: drop-shadow(0 0 0 rgb(57 119 255 / 0%)); } 50% { filter: drop-shadow(0 0 14px rgb(57 119 255 / 55%)); } }
+.pl-scene { width: 100%; height: auto; overflow: visible; }
+.pl-link { fill: none; stroke: #3977ff; stroke-width: 2.2; stroke-dasharray: 6 8; opacity: .55; animation: pl-dash 1s linear infinite; }
+@keyframes pl-dash { to { stroke-dashoffset: -28; } }
+.pl-packet { fill: #6fe3ff; filter: drop-shadow(0 0 5px #3fb4ff); animation: pl-hop-1 1.35s linear infinite; }
+.pl-packet-2 { fill: #7cf5aa; filter: drop-shadow(0 0 5px #2fd88a); animation-name: pl-hop-2; }
+/* Points on the two curves (tower → server, server → router) at 0, 25, 50, 75 and 100%. */
+@keyframes pl-hop-1 { 0% { transform: translate(122px, 66px); } 25% { transform: translate(163px, 60px); } 50% { transform: translate(199px, 81px); } 75% { transform: translate(233px, 105px); } 100% { transform: translate(266px, 108px); } }
+@keyframes pl-hop-2 { 0% { transform: translate(374px, 108px); } 25% { transform: translate(409px, 106px); } 50% { transform: translate(446px, 121px); } 75% { transform: translate(483px, 138px); } 100% { transform: translate(520px, 142px); } }
+.pl-tower path { fill: none; stroke: #9fb2d6; stroke-width: 3; stroke-linecap: round; }
+.pl-tower-top { fill: #3977ff; }
+.pl-tower .pl-wave { stroke: #3977ff; stroke-width: 3; opacity: 0; animation: pl-wave 1.6s ease-out infinite; }
+.pl-tower .pl-wave-2 { animation-delay: .35s; }
+@keyframes pl-wave { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+.pl-box { fill: #1b1f29; stroke: #3a4458; stroke-width: 2; }
+.pl-unit { fill: #262c39; }
+.pl-slot { fill: #3a4458; }
+.pl-led { fill: #2fd88a; animation: pl-blink 1s steps(2, end) infinite; }
+.pl-led-1 { animation-delay: .33s; }
+.pl-led-2 { animation-delay: .66s; }
+@keyframes pl-blink { 50% { opacity: .25; } }
+.pl-roof, .pl-antenna { fill: none; stroke: #9fb2d6; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.pl-router { fill: #3977ff; }
+.pl-label { fill: #8e9bb1; font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-anchor: middle; }
+.pl-progress { display: flex; width: min(80vw, 420px); align-items: center; gap: 14px; }
+.pl-bar { position: relative; height: 6px; flex: 1; overflow: hidden; border-radius: 6px; background: rgb(255 255 255 / 10%); }
+.pl-bar i { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 6px; background: linear-gradient(90deg, #3977ff, #19e6b0); }
+.pl-pct { min-width: 48px; color: #e8ecf5; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+@media (prefers-reduced-motion: reduce) { .pl-packet { display: none; } .pl-logo-wrap, .pl-link, .pl-tower .pl-wave, .pl-led { animation: none; } .pl-tower .pl-wave { opacity: 1; } }

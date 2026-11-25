@@ -84,7 +84,7 @@ export function UserProfile() {
         {status === "ready" && <>
           <section className="profile-card profile-hero" aria-labelledby="profile-title">
             <div className="profile-identity">
-              {user.image ? <img src={user.image} alt="" /> : <span aria-hidden="true">{(user.name || user.email || "U").slice(0, 1).toUpperCase()}</span>}
+              {user.image ? <img src={user.image} alt="" referrerPolicy="no-referrer" /> : <span aria-hidden="true">{(user.name || user.email || "U").slice(0, 1).toUpperCase()}</span>}
               <div>
                 <span className="auth-kicker">MY ACCOUNT</span>
                 <h1 id="profile-title">{user.name || "Your profile"}</h1>

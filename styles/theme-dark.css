@@ -826,6 +826,15 @@ html[data-theme="dark"] .notify-list li.is-unread a {
 html[data-theme="dark"] .notify-toast {
     background: rgb(40 42 46)
 }
+html[data-theme="dark"] #site-preloader {
+    background: rgb(36 37 41)
+}
+html[data-theme="dark"] .pl-bar {
+    background: rgb(255 255 255 / 10%)
+}
+html[data-theme="dark"] .pl-bar i {
+    background: linear-gradient(90deg, #3977ff, #19e6b0)
+}
 
 html[data-theme="dark"] {
   --background: #1f2125;
