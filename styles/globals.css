@@ -1194,10 +1194,26 @@ button.proxy-chip.is-selected { border-color: var(--blue); background: var(--blu
   .proxy-summary { bottom: 8px; padding: 14px; }
   .proxy-summary-actions { width: 100%; }
 }
-/* Phones and tablets: the order summary is too tall to float over the locations; it sits below them
-   (choosing a provider scrolls down to it). */
+/* Phones and tablets: the order summary floats at the bottom as a compact bar (about 160px), so the
+   locations above stay visible: plan + location on one line each, quantity and total side by side,
+   then the two buttons. The price/fee breakdown is left out (the total says "incl. fee"). */
 @media (max-width: 900px) {
-  .proxy-summary { position: static; }
+  .proxy-summary { bottom: 8px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 12px; padding: 12px 14px; }
+  .proxy-summary-info { grid-column: 1 / -1; gap: 1px; }
+  .proxy-summary-info strong { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+  .proxy-summary-info span { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+  .proxy-summary .product-quantity-control { justify-content: flex-start; }
+  .proxy-summary .product-quantity-control > span { display: none; }
+  .proxy-summary .product-quantity-control > div { height: 36px; }
+  .proxy-summary .product-quantity-control button { width: 36px; height: 34px; font-size: 20px; }
+  .proxy-summary .product-quantity-control output { min-width: 30px; }
+  .proxy-summary .product-detail-charges { display: none; }
+  .proxy-summary-total { justify-items: end; font-size: 11px; text-align: right; }
+  .proxy-summary-total strong { font-size: 19px; line-height: 1.15; }
+  .proxy-summary-total small { font-size: 10.5px; }
+  .proxy-summary-actions { grid-column: 1 / -1; width: 100%; }
+  .proxy-summary-actions > button, .proxy-summary-actions > a { flex: 1; min-height: 42px; }
+  .proxy-summary-notice { grid-column: 1 / -1; font-size: 12px; }
   .proxy-summary-actions > button, .proxy-summary-actions > a { flex: 1; }
 }
 .proxy-related { margin-top: 36px; }
