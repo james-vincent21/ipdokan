@@ -44,6 +44,11 @@ export function AdminDashboard() {
   const [locationOptions, rememberLocations] = useSupplierLocations();
   const [imageUploading, setImageUploading] = useState(false);
   const [imageError, setImageError] = useState("");
+  const [cropImage, setCropImage] = useState(null);
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
+  const cropDrag = useRef(null);
+  const cropStage = useRef(null);
   useErrorToast(imageError);
   const isApiProduct = product.source === "myproxyapi";
   const filteredOrders = useMemo(() => filterOrders(orders, orderFilter), [orders, orderFilter]);
@@ -69,10 +74,48 @@ export function AdminDashboard() {
     setImageError("");
     if (!["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"].includes(file.type)) return setImageError("Choose a JPG, PNG, WebP, GIF or AVIF image.");
     if (file.size > 5 * 1024 * 1024) return setImageError("The image must be 5 MB or smaller.");
+    const src = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      const scale = Math.max(320 / image.naturalWidth, 320 / image.naturalHeight);
+      setCropImage({ file, image, src, width: image.naturalWidth, height: image.naturalHeight, baseScale: scale });
+      setCropZoom(1);
+      setCropOffset({ x: (320 - image.naturalWidth * scale) / 2, y: (320 - image.naturalHeight * scale) / 2 });
+    };
+    image.onerror = () => { URL.revokeObjectURL(src); setImageError("This image could not be opened."); };
+    image.src = src;
+  }
+
+  function moveCrop(event) {
+    if (!cropDrag.current || !cropStage.current) return;
+    const rect = cropStage.current.getBoundingClientRect();
+    const dx = (event.clientX - cropDrag.current.x) * (320 / rect.width);
+    const dy = (event.clientY - cropDrag.current.y) * (320 / rect.height);
+    const scale = cropImage.baseScale * cropZoom;
+    setCropOffset({
+      x: Math.min(0, Math.max(320 - cropImage.width * scale, cropDrag.current.ox + dx)),
+      y: Math.min(0, Math.max(320 - cropImage.height * scale, cropDrag.current.oy + dy)),
+    });
+  }
+
+  async function confirmCrop() {
+    if (!cropImage) return;
     setImageUploading(true);
+    setImageError("");
     try {
-      const result = await api("/admin/uploads/product-image", { method: "POST", body: file, headers: { "Content-Type": file.type } });
+      const scale = cropImage.baseScale * cropZoom;
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 800;
+      const context = canvas.getContext("2d");
+      const sx = -cropOffset.x / scale;
+      const sy = -cropOffset.y / scale;
+      const size = 320 / scale;
+      context.drawImage(cropImage.image, sx, sy, size, size, 0, 0, 800, 800);
+      const blob = await new Promise((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error("Could not crop this image.")), "image/jpeg", 0.9));
+      const result = await api("/admin/uploads/product-image", { method: "POST", body: blob, headers: { "Content-Type": "image/jpeg" } });
       setProduct((current) => ({ ...current, imageUrl: result.url }));
+      URL.revokeObjectURL(cropImage.src);
+      setCropImage(null);
     } catch (uploadError) { setImageError(uploadError.message); }
     finally { setImageUploading(false); }
   }
@@ -364,6 +407,16 @@ export function AdminDashboard() {
         {tab === "Admins" && <section className="admin-card"><h2>Admin access</h2><p>Add an account email. That person will see the admin dashboard after signing in with the same email.</p><form className="admin-form admin-code-form" onSubmit={addAdmin}><label>Email address<input type="email" required maxLength={254} value={adminEmail} onChange={(event) => setAdminEmail(event.target.value)} placeholder="admin@example.com" /></label><button type="submit" className="auth-submit">Add admin</button></form><div className="admin-product-list">{admins.map((admin) => <article className="admin-product-row" key={admin.id || admin.email}><div className="admin-product-info"><strong>{admin.email}</strong><span>{admin.source}{admin.addedAt ? ` · Added ${new Date(admin.addedAt).toLocaleDateString()}` : " · Set in backend environment"}</span></div>{admin.id && <button type="button" className="admin-delete" onClick={() => removeAdmin(admin)}>Remove</button>}</article>)}</div></section>}
       </>}
     </div>
+    {cropImage && <div className="admin-crop-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !imageUploading) { URL.revokeObjectURL(cropImage.src); setCropImage(null); } }}>
+      <section className="admin-crop-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-crop-title">
+        <header><div><h2 id="admin-crop-title">Crop product image</h2><p>Drag the image to adjust the square crop.</p></div><button type="button" aria-label="Close cropper" disabled={imageUploading} onClick={() => { URL.revokeObjectURL(cropImage.src); setCropImage(null); }}>×</button></header>
+        <div ref={cropStage} className="admin-crop-stage" onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); cropDrag.current = { x: event.clientX, y: event.clientY, ...cropOffset }; }} onPointerMove={moveCrop} onPointerUp={() => { cropDrag.current = null; }} onPointerCancel={() => { cropDrag.current = null; }}>
+          <img draggable="false" src={cropImage.src} alt="Crop preview" style={{ width: cropImage.width * cropImage.baseScale * cropZoom, height: cropImage.height * cropImage.baseScale * cropZoom, left: cropOffset.x, top: cropOffset.y }} />
+        </div>
+        <label className="admin-crop-zoom">Zoom <input type="range" min="1" max="3" step="0.01" value={cropZoom} onChange={(event) => { const next = Number(event.target.value); const scale = cropImage.baseScale * next; setCropZoom(next); setCropOffset((current) => ({ x: Math.min(0, Math.max(320 - cropImage.width * scale, current.x)), y: Math.min(0, Math.max(320 - cropImage.height * scale, current.y)) })); }} /></label>
+        <footer><button type="button" className="admin-secondary" disabled={imageUploading} onClick={() => { URL.revokeObjectURL(cropImage.src); setCropImage(null); }}>Cancel</button><button type="button" className="auth-submit" disabled={imageUploading} onClick={confirmCrop}>{imageUploading ? "Uploading…" : "Crop & upload"}</button></footer>
+      </section>
+    </div>}
   </main>;
 }
 
