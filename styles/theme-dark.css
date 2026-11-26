@@ -357,6 +357,18 @@ html[data-theme="dark"] .admin-cancel-order {
 html[data-theme="dark"] .admin-image-preview {
     background: rgba(255,255,255,.03)
 }
+html[data-theme="dark"] .admin-crop-backdrop {
+    background: rgb(3 7 14 / 78%)
+}
+html[data-theme="dark"] .admin-crop-dialog {
+    background: rgb(39 41 45)
+}
+html[data-theme="dark"] .admin-crop-dialog > header button {
+    background: transparent
+}
+html[data-theme="dark"] .admin-crop-stage {
+    background: rgb(31 32 35)
+}
 html[data-theme="dark"] .admin-form input,
 html[data-theme="dark"] .admin-form textarea {
     background: rgb(33 35 38)
@@ -861,6 +873,156 @@ html[data-theme="dark"] .pl-bar {
 }
 html[data-theme="dark"] .pl-bar i {
     background: linear-gradient(90deg, #3977ff, #19e6b0)
+}
+html[data-theme="dark"] .wallet-nav-balance {
+    background: rgb(57 120 239 / 16%)
+}
+html[data-theme="dark"] .notify-icon-button {
+    background: transparent
+}
+html[data-theme="dark"] .notify-link-button {
+    background: none
+}
+html[data-theme="dark"] .notify-read-toggle {
+    background: transparent
+}
+html[data-theme="dark"] .notify-read-toggle:hover {
+    background: rgb(255 255 255 / 8%)
+}
+html[data-theme="dark"] .notify-dot {
+    background: #3977ff
+}
+html[data-theme="dark"] .notify-dot.is-hollow {
+    background: transparent
+}
+html[data-theme="dark"] .notifications-filter button {
+    background: transparent
+}
+html[data-theme="dark"] .notifications-filter button.is-selected {
+    background: #3978ef
+}
+html[data-theme="dark"] .notifications-list li.is-unread {
+    background: rgb(57 119 255 / 9%)
+}
+html[data-theme="dark"] .notifications-read-toggle {
+    background: transparent
+}
+html[data-theme="dark"] .admin-credit-results button {
+    background: transparent
+}
+html[data-theme="dark"] .admin-credit-results button:hover {
+    background: rgb(255 255 255 / 5%)
+}
+html[data-theme="dark"] .admin-credit-mode button {
+    background: transparent
+}
+html[data-theme="dark"] .admin-credit-mode button.is-selected {
+    background: #3978ef
+}
+html[data-theme="dark"] .admin-credit-mode button.is-selected.is-debit {
+    background: #dc2626
+}
+html[data-theme="dark"] .dev-mode-banner {
+    background: repeating-linear-gradient(135deg, #f59e0b 0 22px, #fbbf24 22px 44px)
+}
+html[data-theme="dark"] .dev-mode-icon {
+    background: #1c1300
+}
+html[data-theme="dark"] .app-toast {
+    background: rgb(40 42 46)
+}
+html[data-theme="dark"] .app-toast-icon {
+    background: #3978ef
+}
+html[data-theme="dark"] .app-toast.is-error .app-toast-icon {
+    background: #ef4444
+}
+html[data-theme="dark"] .app-toast.is-success .app-toast-icon {
+    background: #22c55e
+}
+html[data-theme="dark"] .app-toast button {
+    background: transparent
+}
+html[data-theme="dark"] .app-toast button:hover {
+    background: rgb(255 255 255 / 8%)
+}
+html[data-theme="dark"] .admin-delete-order {
+    background: transparent
+}
+html[data-theme="dark"] .admin-delete-order:hover {
+    background: rgb(239 68 68 / 10%)
+}
+html[data-theme="dark"] .admin-pay-method {
+    background: rgb(148 163 184 / 14%)
+}
+html[data-theme="dark"] .admin-pay-method.is-cryptomus {
+    background: rgb(168 85 247 / 18%)
+}
+html[data-theme="dark"] .admin-pay-method.is-zinipay {
+    background: rgb(236 72 153 / 16%)
+}
+html[data-theme="dark"] .admin-pay-method.is-wallet {
+    background: rgb(57 120 239 / 18%)
+}
+html[data-theme="dark"] .admin-pay-method.is-admin {
+    background: rgb(245 158 11 / 16%)
+}
+html[data-theme="dark"] .order-status.is-failed {
+    background: rgb(239 68 68 / 12%)
+}
+html[data-theme="dark"] .admin-telegram-tag {
+    background: rgb(14 165 233 / 18%) !important
+}
+html[data-theme="dark"] .footer-protected-badge {
+    background: rgb(255 255 255 / 5%)
+}
+html[data-theme="dark"] .footer-protected-logo {
+    background: #fff
+}
+html[data-theme="dark"] .coupon-toggle {
+    background: transparent
+}
+html[data-theme="dark"] .coupon-field input {
+    background: rgb(33 35 38)
+}
+html[data-theme="dark"] .coupon-box.is-applied {
+    background: rgb(76 181 130 / 9%)
+}
+html[data-theme="dark"] .coupon-applied-icon {
+    background: #2fae75
+}
+html[data-theme="dark"] .coupon-box.is-applied button {
+    background: transparent
+}
+html[data-theme="dark"] .admin-coupon-code {
+    background: rgb(57 119 255 / 10%)
+}
+html[data-theme="dark"] .review-popup {
+    background: radial-gradient(120% 70% at 50% 0%, rgb(57 119 255 / 22%), transparent 62%), var(--surface)
+}
+html[data-theme="dark"] .review-popup-badge {
+    background: linear-gradient(140deg, #3977ff, #8b5cf6)
+}
+html[data-theme="dark"] .review-popup-badge.is-thanks {
+    background: linear-gradient(140deg, #22c55e, #14b8a6)
+}
+html[data-theme="dark"] .review-popup-stars button {
+    background: transparent
+}
+html[data-theme="dark"] .review-popup-feedback textarea {
+    background: rgb(33 35 38)
+}
+html[data-theme="dark"] .review-popup-confetti i {
+    background: #3977ff
+}
+html[data-theme="dark"] .review-popup-confetti i:nth-child(3n) {
+    background: #22c55e
+}
+html[data-theme="dark"] .review-popup-confetti i:nth-child(3n + 1) {
+    background: #fbbf24
+}
+html[data-theme="dark"] .review-popup-confetti i:nth-child(4n) {
+    background: #ec4899
 }
 
 html[data-theme="dark"] .popular-product-card, html[data-theme="dark"] .store-product-card, html[data-theme="dark"] .proxy-plan-card, html[data-theme="dark"] .proxy-type-card:not(.is-selected), html[data-theme="dark"] .benefit-card, html[data-theme="dark"] .service-card, html[data-theme="dark"] .overview-service-card, html[data-theme="dark"] .trust-feature { text-shadow: 0 1px 2px rgb(0 0 0 / 35%); }

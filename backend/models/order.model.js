@@ -10,11 +10,17 @@ const orderSchema = new mongoose.Schema({
   variantId: { type: mongoose.Schema.Types.ObjectId, default: null },
   variantName: { type: String, default: "" },
   invoiceId: { type: String, default: "", unique: true, sparse: true },
-  // amount = subtotal (product price × quantity) + serviceFee. amount is what the customer pays.
+  // amount = subtotal (product price × quantity) − discount + serviceFee. amount is what the customer pays.
   amount: { type: Number, required: true, min: 0 },
   subtotal: { type: Number, default: 0, min: 0 },
   serviceFee: { type: Number, default: 0, min: 0 },
   serviceFeePercent: { type: Number, default: 0, min: 0 },
+  // Coupon: `discount` is taken off the subtotal before the service fee is added.
+  couponId: { type: mongoose.Schema.Types.ObjectId, default: null, index: true },
+  couponCode: { type: String, default: "" },
+  discount: { type: Number, default: 0, min: 0 },
+  // Shared by every order placed in one checkout (one "Buy now" or one cart).
+  checkoutId: { type: String, default: "", index: true },
   currency: { type: String, required: true },
   quantity: { type: Number, required: true, min: 1, default: 1 },
   stripeCheckoutSessionId: { type: String, default: "", index: true },

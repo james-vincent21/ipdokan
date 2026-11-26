@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { downloadInvoicePdf } from "@/lib/invoice-download";
 import { Icon } from "@/components/ui/icons";
 import { useCurrencyPreference } from "@/lib/currency-preference";
-import { DEFAULT_SERVICE_FEE_PERCENT, sumWithServiceFee, withServiceFee } from "@/lib/service-fee";
+import { DEFAULT_SERVICE_FEE_PERCENT } from "@/lib/service-fee";
+import { CouponRedeem, checkoutCharge, couponWorksIn, newCheckoutId } from "@/lib/coupon";
 import { onCartChange, readCart, writeCart } from "@/lib/cart-store";
 import { useErrorToast } from "@/lib/toast";
 
@@ -25,7 +26,7 @@ function PaymentLogo({ method }) {
 }
 
 // Shown after "Buy now" / "Place order": the customer picks a gateway and sees the exact amount for each.
-function PaymentChooser({ methods, amounts, feePercent, walletBalance, busy, onChoose, onClose }) {
+function PaymentChooser({ methods, amounts, feePercent, couponCode, walletBalance, busy, onChoose, onClose }) {
   useEffect(() => {
     const onKey = (event) => { if (event.key === "Escape" && !busy) onClose(); };
     window.addEventListener("keydown", onKey);
@@ -52,7 +53,7 @@ function PaymentChooser({ methods, amounts, feePercent, walletBalance, busy, onC
           </button>;
         })}
       </div>
-      <p className="pay-chooser-note">{busy ? "Taking you to the secure payment page…" : `Amounts include the ${feePercent}% service & additional fee. You will be taken to the provider's secure page to pay. Your code is delivered as soon as the payment is confirmed.`}</p>
+      <p className="pay-chooser-note">{busy ? "Taking you to the secure payment page…" : `Amounts include the ${feePercent}% service & additional fee${couponCode ? ` and your ${couponCode} coupon discount` : ""}. You will be taken to the provider's secure page to pay. Your code is delivered as soon as the payment is confirmed.`}</p>
     </div>
   </div>;
 }
@@ -88,6 +89,8 @@ export function CheckoutPage() {
   const [chooser, setChooser] = useState("");
   const [serviceFeePercent, setServiceFeePercent] = useState(DEFAULT_SERVICE_FEE_PERCENT);
   const [walletBalance, setWalletBalance] = useState(null);
+  // Optional coupon; its discount is taken off the product price before the service fee.
+  const [coupon, setCoupon] = useState(null);
   const hostedMethods = paymentMethods.filter((method) => method in paymentMethodInfo);
 
   // The wallet balance is read each time the payment chooser opens, so a fresh recharge shows up.
@@ -161,8 +164,8 @@ export function CheckoutPage() {
   const locationError = needsLocation && !selectedLocation ? "Choose a location first." : needsLocation && selectedLocation.stock < (selectedVariant.ips || 1) * Number(quantity || 1) ? `${selectedLocation.name} does not have enough IPs for this plan. Choose another location.` : "";
   // Per currency: product subtotal, the service fee, and the total the customer pays.
   const totals = useMemo(() => Object.fromEntries([...new Set(cart.map((item) => item.currency))].map((currency) => [currency,
-    sumWithServiceFee(cart.filter((item) => item.currency === currency).map((item) => item.price * item.quantity), serviceFeePercent)])), [cart, serviceFeePercent]);
-  const productCharge = withServiceFee(selectedPaymentPrice * Number(quantity || 0), serviceFeePercent);
+    checkoutCharge(cart.filter((item) => item.currency === currency).map((item) => item.price * item.quantity), coupon, currency, serviceFeePercent)])), [cart, coupon, serviceFeePercent]);
+  const productCharge = checkoutCharge([selectedPaymentPrice * Number(quantity || 0)], coupon, paymentCurrency, serviceFeePercent);
 
   // API proxies are bought on the proxy store page (same interface as the nav), so old links redirect there.
   useEffect(() => {
@@ -297,9 +300,9 @@ export function CheckoutPage() {
   function chooserAmounts(kind) {
     if (kind === "product") {
       const amount = Number(quantity || 0);
-      return { BDT: withServiceFee(selectedPriceBdt * amount, serviceFeePercent).total, USD: withServiceFee(selectedPriceUsd * amount, serviceFeePercent).total };
+      return Object.fromEntries([["BDT", selectedPriceBdt], ["USD", selectedPriceUsd]].map(([currency, price]) => [currency, couponWorksIn(coupon, currency) ? checkoutCharge([price * amount], coupon, currency, serviceFeePercent).total : 0]));
     }
-    return Object.fromEntries(["BDT", "USD"].map((currency) => [currency, sumWithServiceFee(cart.map((item) => linePrice(item, currency) * item.quantity), serviceFeePercent).total]));
+    return Object.fromEntries(["BDT", "USD"].map((currency) => [currency, couponWorksIn(coupon, currency) ? checkoutCharge(cart.map((item) => linePrice(item, currency) * item.quantity), coupon, currency, serviceFeePercent).total : 0]));
   }
 
   // With hosted gateways, "Buy now" / "Place order" first opens the payment method chooser.
@@ -361,9 +364,10 @@ export function CheckoutPage() {
     let remainingCart = [...cart];
     const currency = paymentMethodInfo[method]?.currency;
     let redirecting = false;
+    const checkoutId = newCheckoutId();
     try {
       for (const item of [...cart]) {
-        const response = await fetch(`${apiUrl}/api/orders`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ productId: item.productId, variantId: item.variantId || undefined, locationId: item.locationId || undefined, quantity: item.quantity, currency: currency || item.currency }) });
+        const response = await fetch(`${apiUrl}/api/orders`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ productId: item.productId, variantId: item.variantId || undefined, locationId: item.locationId || undefined, quantity: item.quantity, currency: currency || item.currency, checkoutId, couponCode: coupon?.code || undefined }) });
         const result = await response.json();
         if (response.status === 401) throw new Error("Sign in before placing your order.");
         if (!response.ok) throw new Error(result.error || `Could not place the ${item.name} order.`);
@@ -390,7 +394,7 @@ export function CheckoutPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ productId: selectedProduct.id, variantId: selectedVariant?.id || undefined, locationId: selectedLocation?.id || undefined, quantity: amount, currency: paymentMethodInfo[method]?.currency || paymentCurrency }),
+        body: JSON.stringify({ productId: selectedProduct.id, variantId: selectedVariant?.id || undefined, locationId: selectedLocation?.id || undefined, quantity: amount, currency: paymentMethodInfo[method]?.currency || paymentCurrency, checkoutId: newCheckoutId(), couponCode: coupon?.code || undefined }),
       });
       const result = await response.json();
       if (response.status === 401) throw new Error("Sign in before purchasing.");
@@ -406,7 +410,7 @@ export function CheckoutPage() {
   }
 
   return <main className="checkout-page">
-    {chooser && <PaymentChooser methods={hostedMethods} amounts={chooserAmounts(chooser)} feePercent={serviceFeePercent} walletBalance={walletBalance} busy={busy} onClose={() => setChooser("")} onChoose={(method) => (chooser === "product" ? purchaseProduct(method) : placeOrders(method))} />}
+    {chooser && <PaymentChooser methods={hostedMethods} amounts={chooserAmounts(chooser)} feePercent={serviceFeePercent} couponCode={coupon?.code || ""} walletBalance={walletBalance} busy={busy} onClose={() => setChooser("")} onChoose={(method) => (chooser === "product" ? purchaseProduct(method) : placeOrders(method))} />}
     <div className="checkout-shell">
       <header className="checkout-heading"><span className="auth-kicker">IP DOKAN STORE</span><h1>{isProductPage ? "Product details" : "Checkout"}</h1><p>{isProductPage ? "Review product details, choose a plan, and add your quantity." : "Review your cart and place the order."}</p></header>
       {message && <p className="admin-notice" role="status">{message}</p>}
@@ -430,7 +434,8 @@ export function CheckoutPage() {
           <p className="product-detail-stock">{selectedAvailable > 0 ? `${selectedAvailable} available` : "Out of stock"}</p>
           <div className="product-quantity-control"><span>Quantity</span><div><button type="button" aria-label="Decrease quantity" disabled={Number(quantity) <= 1} onClick={() => setQuantity(String(Math.max(1, Number(quantity) - 1)))}>−</button><output>{quantity}</output><button type="button" aria-label="Increase quantity" disabled={Number(quantity) >= selectedAvailable} onClick={() => setQuantity(String(Math.min(selectedAvailable, Number(quantity) + 1)))}>+</button></div></div>
           {priceMissing ? <div className="product-detail-actions"><a className="auth-submit product-purchase-button" href="https://t.me/IpDokan" target="_blank" rel="noreferrer">Contact admin</a><p className="product-contact-note">The price for this plan is not set yet. Message admin on Telegram to order it.</p></div> : <>
-          <div className="product-detail-charges"><p><span>Price</span><span>{formatPrice(productCharge.subtotal, paymentCurrency)}</span></p><p><span>Service &amp; additional fee ({serviceFeePercent}%)</span><span>{formatPrice(productCharge.serviceFee, paymentCurrency)}</span></p></div>
+          <CouponRedeem coupon={coupon} onChange={setCoupon} currency={paymentCurrency} formatPrice={formatPrice} disabled={busy} />
+          <div className="product-detail-charges"><p><span>Price</span><span>{formatPrice(productCharge.subtotal, paymentCurrency)}</span></p>{productCharge.discount > 0 && <p className="is-discount"><span>Coupon ({coupon.code})</span><span>−{formatPrice(productCharge.discount, paymentCurrency)}</span></p>}<p><span>Service &amp; additional fee ({serviceFeePercent}%)</span><span>{formatPrice(productCharge.serviceFee, paymentCurrency)}</span></p></div>
           <p className="product-detail-total">Total <strong>{formatPrice(productCharge.total, paymentCurrency)}</strong></p>
           {selectedVariant?.ips > 0 && productCharge.total > 0 && <p className="product-detail-per-ip">{selectedVariant.ips * Number(quantity || 0)} {selectedVariant.ips * Number(quantity || 0) === 1 ? "IP" : "IPs"} ·{formatPrice(productCharge.total / (selectedVariant.ips * Number(quantity || 1)), paymentCurrency)} per IP incl. fee</p>}
           <div className="product-detail-actions"><button className="admin-secondary" type="button" disabled={!selectedAvailable} onClick={() => addToCart()} >Add to cart</button><button className="auth-submit product-purchase-button" type="button" disabled={!selectedAvailable || busy} onClick={() => startPurchase("product")}>{busy ? "Processing…" : "Buy now"}</button></div>
@@ -453,7 +458,7 @@ export function CheckoutPage() {
         <div className="product-review-list">
           {reviews.map((review) => <article className="product-review" key={review.id || `${review.userName}-${review.createdAt}`}>
             <div className="product-review-meta"><strong>{review.userName}</strong><span>{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</span></div>
-            <p>{review.comment}</p>
+            {review.comment && <p>{review.comment}</p>}
             {review.createdAt && <time>{new Date(review.createdAt).toLocaleString()}</time>}
             <button type="button" className={`product-review-like${review.userLiked ? " is-liked" : ""}`} aria-pressed={Boolean(review.userLiked)} onClick={() => toggleReviewLike(review)}>♥ {review.likeCount || 0}</button>
             {review.adminReply && <div className="product-review-admin-reply"><strong>Admin reply</strong><p>{review.adminReply.text}</p><time>{review.adminReply.repliedAt ? new Date(review.adminReply.repliedAt).toLocaleString() : ""}</time></div>}
@@ -469,8 +474,10 @@ export function CheckoutPage() {
             <strong className="checkout-line-total">{formatPrice(item.price * item.quantity, item.currency)}</strong>
             <button className="checkout-remove" type="button" onClick={() => persistCart(cart.filter((entry) => !(entry.productId === item.productId && (entry.variantId || "") === (item.variantId || ""))))}>Remove</button>
           </article>)}</div>
+          <CouponRedeem coupon={coupon} onChange={setCoupon} currency={paymentCurrency} formatPrice={formatPrice} disabled={busy} />
           <div className="checkout-totals">{Object.entries(totals).map(([currency, charge]) => <div className="checkout-total-group" key={currency}>
             <p><span>Subtotal ({currency})</span><span>{formatPrice(charge.subtotal, currency)}</span></p>
+            {charge.discount > 0 && <p className="is-discount"><span>Coupon ({coupon.code})</span><span>−{formatPrice(charge.discount, currency)}</span></p>}
             <p><span>Service &amp; additional fee ({serviceFeePercent}%)</span><span>{formatPrice(charge.serviceFee, currency)}</span></p>
             <p className="checkout-total-due"><span>Total ({currency})</span><strong>{formatPrice(charge.total, currency)}</strong></p>
           </div>)}</div>

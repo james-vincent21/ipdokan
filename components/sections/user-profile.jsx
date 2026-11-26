@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { downloadInvoicePdf } from "@/lib/invoice-download";
+import { PurchaseReviewPopup } from "./purchase-review-popup";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -78,6 +79,7 @@ export function UserProfile() {
 
   return (
     <main className="profile-page">
+      {status === "ready" && <PurchaseReviewPopup orders={orders} />}
       <div className="profile-shell">
         {status === "loading" && <section className="profile-card profile-state" aria-busy="true"><span className="profile-spinner" aria-hidden="true" /><p className="profile-message">Loading your profile…</p></section>}
         {status === "error" && <section className="profile-card profile-state"><p className="profile-message" role="status">{message}</p><Link className="profile-home-link" href="/">Return to sign in</Link></section>}
@@ -116,6 +118,7 @@ export function UserProfile() {
                 <div className="profile-order-meta">
                   <span>Invoice <b>{order.invoiceId || `IPD-${String(order.id).toUpperCase()}`}</b></span>
                   {order.amount !== undefined && <span>Total <b>{order.currency} {Number(order.amount).toFixed(2)}</b></span>}
+                  {order.discount > 0 && <span>Coupon <b>{order.couponCode} · −{order.currency} {Number(order.discount).toFixed(2)}</b></span>}
                 </div>
                 {codes.length > 0 && <div className="profile-codes">
                   <span className="profile-codes-label">{order.isProxyOrder ? (codes.length === 1 ? "Your proxy" : `Your ${codes.length} proxies`) : codes.length === 1 ? "Your code" : `Your ${codes.length} codes`}</span>

@@ -32,7 +32,7 @@ const reviewSchema = new mongoose.Schema({
   userId: { type: String, required: true, index: true },
   userName: { type: String, default: "", trim: true, maxlength: 80 },
   rating: { type: Number, required: true, min: 1, max: 5 },
-  comment: { type: String, required: true, trim: true, maxlength: 1000 },
+  comment: { type: String, default: "", trim: true, maxlength: 1000 },
   likes: { type: [String], default: [] },
   adminReply: {
     text: { type: String, default: "", trim: true, maxlength: 1500 },

@@ -772,6 +772,31 @@ html[data-theme="light"] .admin-form .admin-image-upload {
 html[data-theme="light"] .admin-image-error {
     color: rgb(184 0 0)
 }
+html[data-theme="light"] .admin-crop-backdrop {
+    background: rgb(240 243 249 / 78%)
+}
+html[data-theme="light"] .admin-crop-dialog {
+    background: rgb(250 251 252);
+    box-shadow: 0 24px 80px rgb(0 0 0 / 15.8%)
+}
+html[data-theme="light"] .admin-crop-dialog h2 {
+    color: rgb(10 20 41)
+}
+html[data-theme="light"] .admin-crop-dialog p {
+    color: rgb(67 80 100)
+}
+html[data-theme="light"] .admin-crop-dialog > header button {
+    color: rgb(41 73 142)
+}
+html[data-theme="light"] .admin-crop-stage {
+    background: rgb(243 245 250)
+}
+html[data-theme="light"] .admin-crop-zoom {
+    color: rgb(61 83 122)
+}
+html[data-theme="light"] .admin-crop-zoom input {
+    accent-color: rgb(36 161 123)
+}
 html[data-theme="light"] .admin-form input,
 html[data-theme="light"] .admin-form textarea {
     background: rgb(245 247 251);
@@ -2052,6 +2077,380 @@ html[data-theme="light"] .pl-bar i {
 }
 html[data-theme="light"] .pl-pct {
     color: rgb(15 22 36)
+}
+html[data-theme="light"] .admin-user-id {
+    color: rgb(78 91 113)
+}
+html[data-theme="light"] .admin-credit-user span,
+html[data-theme="light"] .admin-credit-user small {
+    color: rgb(74 86 105)
+}
+html[data-theme="light"] .wallet-nav-balance {
+    background: rgb(57 120 239 / 16%);
+    color: rgb(0 61 184)
+}
+html[data-theme="light"][data-theme="light"] .wallet-nav-balance {
+    background: rgb(232 240 255);
+    color: rgb(24 77 220)
+}
+html[data-theme="light"] .notify-title small {
+    color: rgb(0 61 184)
+}
+html[data-theme="light"] .notify-icon-button {
+    color: rgb(37 46 62)
+}
+html[data-theme="light"] .notify-icon-button[aria-pressed="false"] {
+    color: rgb(102 112 130)
+}
+html[data-theme="light"] .notify-link-button {
+    color: rgb(0 61 184)
+}
+html[data-theme="light"] .notify-read-toggle:hover {
+    background: rgb(15 23 42 / 7.2%)
+}
+html[data-theme="light"] .notify-dot {
+    background: rgb(57 119 255);
+    color: #fff
+}
+html[data-theme="light"] .notify-dot.is-hollow {
+    border: 1.5px solid rgb(94 104 121)
+}
+html[data-theme="light"] .notify-all-link {
+    color: rgb(0 61 184)
+}
+html[data-theme="light"] .notifications-heading p {
+    color: rgb(74 86 105)
+}
+html[data-theme="light"] .notifications-filter button {
+    color: rgb(68 79 98)
+}
+html[data-theme="light"] .notifications-filter button.is-selected {
+    background: rgb(57 120 239);
+    color: #fff
+}
+html[data-theme="light"] .notifications-list li.is-unread {
+    border-color: rgb(0 62 198 / 45%);
+    background: rgb(57 119 255 / 9%)
+}
+html[data-theme="light"] .notifications-list span {
+    color: rgb(64 73 91)
+}
+html[data-theme="light"] .notifications-list time {
+    color: rgb(102 112 130)
+}
+html[data-theme="light"] .notifications-read-toggle {
+    color: rgb(0 61 184)
+}
+html[data-theme="light"][data-theme="light"] .notifications-list span {
+    color: rgb(75 85 99)
+}
+html[data-theme="light"][data-theme="light"] .notifications-heading p,
+html[data-theme="light"][data-theme="light"] .notifications-list time {
+    color: rgb(127 134 148)
+}
+html[data-theme="light"][data-theme="light"] .notifications-list li.is-unread {
+    background: rgb(238 244 255)
+}
+html[data-theme="light"][data-theme="light"] .notifications-read-toggle,
+html[data-theme="light"][data-theme="light"] .notify-link-button {
+    color: rgb(24 77 220)
+}
+html[data-theme="light"][data-theme="light"] .notifications-filter button {
+    color: rgb(75 85 99)
+}
+html[data-theme="light"][data-theme="light"] .notifications-filter button.is-selected {
+    color: rgb(26 26 26)
+}
+html[data-theme="light"] .admin-credit-results button:hover {
+    background: rgb(15 23 42 / 4.5%)
+}
+html[data-theme="light"] .admin-credit-results small {
+    color: rgb(74 86 105)
+}
+html[data-theme="light"] .admin-credit-mode button {
+    color: rgb(68 79 98)
+}
+html[data-theme="light"] .admin-credit-mode button.is-selected {
+    background: rgb(57 120 239);
+    color: #fff
+}
+html[data-theme="light"] .admin-credit-mode button.is-selected.is-debit {
+    background: rgb(220 38 38);
+    color: #fff
+}
+html[data-theme="light"] .dev-mode-banner {
+    background: repeating-linear-gradient(135deg, rgb(245 158 11) 0 22px, rgb(251 191 36) 22px 44px);
+    color: #1c1300;
+    box-shadow: 0 6px 18px rgb(0 0 0 / 8.8%)
+}
+html[data-theme="light"] .dev-mode-icon {
+    background: rgb(250 248 243);
+    color: rgb(223 161 0)
+}
+html[data-theme="light"] .admin-dev-mode.is-on {
+    border-color: rgb(241 153 4 / 60%)
+}
+html[data-theme="light"] .app-toast {
+    border-left: 4px solid rgb(11 78 203);
+    background: rgb(251 251 252);
+    color: rgb(12 21 39);
+    box-shadow: 0 16px 40px rgb(0 0 0 / 14%)
+}
+html[data-theme="light"] .app-toast.is-error {
+    border-color: rgb(191 12 12 / 45%);
+    border-left-color: rgb(191 12 12)
+}
+html[data-theme="light"] .app-toast.is-success {
+    border-color: rgb(32 213 98 / 40%);
+    border-left-color: rgb(32 213 98)
+}
+html[data-theme="light"] .app-toast p a {
+    color: rgb(0 61 184)
+}
+html[data-theme="light"] .app-toast-icon {
+    background: rgb(57 120 239);
+    color: #fff
+}
+html[data-theme="light"] .app-toast.is-error .app-toast-icon {
+    background: rgb(239 68 68);
+    color: #fff
+}
+html[data-theme="light"] .app-toast.is-success .app-toast-icon {
+    background: rgb(34 197 94);
+    color: #fff
+}
+html[data-theme="light"] .app-toast button {
+    color: rgb(68 79 98)
+}
+html[data-theme="light"] .app-toast button:hover {
+    background: rgb(15 23 42 / 7.2%);
+    color: rgb(26 26 26)
+}
+html[data-theme="light"][data-theme="light"] .app-toast {
+    background: rgb(255 255 255);
+    color: rgb(17 24 39);
+    box-shadow: 0 16px 40px rgb(15 23 42 / 6.3%)
+}
+html[data-theme="light"][data-theme="light"] .app-toast button {
+    color: rgb(127 134 148)
+}
+html[data-theme="light"][data-theme="light"] .app-toast button:hover {
+    background: rgb(241 245 249);
+    color: rgb(17 24 39)
+}
+html[data-theme="light"][data-theme="light"] .app-toast p a {
+    color: rgb(24 77 220)
+}
+html[data-theme="light"][data-theme="light"] .notify-all-link,
+html[data-theme="light"][data-theme="light"] .notify-title small {
+    color: rgb(24 77 220)
+}
+html[data-theme="light"] .admin-delete-order {
+    border: 1px solid rgb(191 12 12 / 40%);
+    color: rgb(179 4 4)
+}
+html[data-theme="light"] .admin-delete-order:hover {
+    background: rgb(239 68 68 / 10%)
+}
+html[data-theme="light"][data-theme="light"] .admin-delete-order {
+    color: rgb(215 30 30)
+}
+html[data-theme="light"] .admin-pay-method {
+    background: rgb(15 23 42 / 12.6%);
+    color: rgb(37 46 62)
+}
+html[data-theme="light"] .admin-pay-method.is-cryptomus {
+    background: rgb(168 85 247 / 18%);
+    color: rgb(89 0 184)
+}
+html[data-theme="light"] .admin-pay-method.is-zinipay {
+    background: rgb(236 72 153 / 16%);
+    color: rgb(176 8 99)
+}
+html[data-theme="light"] .admin-pay-method.is-wallet {
+    background: rgb(57 120 239 / 18%);
+    color: rgb(0 63 184)
+}
+html[data-theme="light"] .admin-pay-method.is-admin {
+    background: rgb(245 158 11 / 16%);
+    color: rgb(184 141 0)
+}
+html[data-theme="light"] .admin-amount-negative {
+    color: rgb(179 4 4)
+}
+html[data-theme="light"][data-theme="light"] .admin-pay-method {
+    color: rgb(51 65 85)
+}
+html[data-theme="light"][data-theme="light"] .admin-pay-method.is-cryptomus {
+    color: rgb(129 30 215)
+}
+html[data-theme="light"][data-theme="light"] .admin-pay-method.is-zinipay {
+    color: rgb(190 24 93)
+}
+html[data-theme="light"][data-theme="light"] .admin-pay-method.is-wallet {
+    color: rgb(24 77 220)
+}
+html[data-theme="light"][data-theme="light"] .admin-pay-method.is-admin {
+    color: rgb(180 83 9)
+}
+html[data-theme="light"] .admin-stat-total {
+    border-color: rgb(32 213 98 / 40%) !important
+}
+html[data-theme="light"] .admin-stat-total small {
+    color: rgb(74 86 105)
+}
+html[data-theme="light"] .order-status.is-failed {
+    border-color: rgb(191 12 12 / 45%);
+    background: rgb(239 68 68 / 12%);
+    color: rgb(179 4 4)
+}
+html[data-theme="light"] .admin-payment-failure {
+    color: rgb(179 4 4) !important
+}
+html[data-theme="light"] .admin-telegram-tag {
+    background: rgb(14 165 233 / 18%) !important;
+    color: rgb(0 124 184) !important
+}
+html[data-theme="light"][data-theme="light"] .order-status.is-failed,
+html[data-theme="light"][data-theme="light"] .admin-payment-failure {
+    color: rgb(215 30 30) !important
+}
+html[data-theme="light"][data-theme="light"] .admin-telegram-tag {
+    color: rgb(3 105 161) !important
+}
+html[data-theme="light"] .footer-protected-label {
+    color: rgb(80 91 112)
+}
+html[data-theme="light"] .footer-protected-badge {
+    border: 1px solid rgb(15 23 42 / 14.4%);
+    background: rgb(15 23 42 / 4.5%);
+    color: rgb(15 22 36)
+}
+html[data-theme="light"] .footer-protected-logo {
+    background: rgb(255 255 255)
+}
+html[data-theme="light"][data-theme="light"] .footer-protected-label {
+    color: rgb(127 134 148)
+}
+html[data-theme="light"][data-theme="light"] .footer-protected-badge {
+    border-color: rgb(19 25 35);
+    background: rgb(255 255 255);
+    color: rgb(31 41 55)
+}
+html[data-theme="light"] .coupon-toggle {
+    color: rgb(67 79 99)
+}
+html[data-theme="light"] .coupon-toggle span {
+    color: rgb(0 56 184)
+}
+html[data-theme="light"] .coupon-toggle:hover span {
+    color: rgb(0 56 184)
+}
+html[data-theme="light"] .coupon-field input {
+    border: 1px dashed rgb(0 56 184 / 45%);
+    background: rgb(245 247 251);
+    color: rgb(10 20 41)
+}
+html[data-theme="light"] .coupon-field input:focus {
+    border-color: rgb(0 62 198)
+}
+html[data-theme="light"] .coupon-field input::placeholder {
+    color: rgb(111 123 144)
+}
+html[data-theme="light"] .coupon-error {
+    color: rgb(184 0 0)
+}
+html[data-theme="light"] .coupon-box.is-applied {
+    border: 1px solid rgb(69 176 124 / 32%);
+    background: rgb(76 181 130 / 9%)
+}
+html[data-theme="light"] .coupon-applied-icon {
+    background: rgb(47 174 117);
+    color: #fff
+}
+html[data-theme="light"] .coupon-box.is-applied strong {
+    color: rgb(42 141 88)
+}
+html[data-theme="light"] .coupon-box.is-applied small {
+    color: rgb(67 79 99)
+}
+html[data-theme="light"] .coupon-box.is-applied button {
+    color: rgb(184 0 0)
+}
+html[data-theme="light"] .product-detail-charges p.is-discount span,
+html[data-theme="light"] .product-detail-charges p.is-discount span:last-child,
+html[data-theme="light"] .checkout-totals p.is-discount {
+    color: rgb(45 182 115)
+}
+html[data-theme="light"] .admin-coupon-code {
+    border: 1px dashed rgb(0 56 184 / 45%);
+    background: rgb(57 119 255 / 10%);
+    color: rgb(0 56 184)
+}
+html[data-theme="light"] .admin-order-coupon {
+    color: rgb(45 182 115) !important
+}
+html[data-theme="light"] .review-popup {
+    background: radial-gradient(120% 70% at 50% 0%, rgb(57 119 255 / 22%), transparent 62%), var(--surface);
+    box-shadow: 0 30px 100px rgb(0 0 0 / 17.5%)
+}
+html[data-theme="light"] .review-popup p {
+    color: rgb(52 63 81)
+}
+html[data-theme="light"] .review-popup p strong {
+    color: rgb(10 20 41)
+}
+html[data-theme="light"] .review-popup-badge {
+    background: linear-gradient(140deg, rgb(57 119 255), rgb(139 92 246));
+    box-shadow: 0 10px 30px rgb(255 255 255 / 0%);
+    color: #fff
+}
+html[data-theme="light"] .review-popup-badge.is-thanks {
+    background: linear-gradient(140deg, rgb(34 197 94), rgb(20 184 166));
+    box-shadow: 0 10px 30px rgb(34 197 94 / 13.3%);
+    color: #fff
+}
+html[data-theme="light"] .review-popup-stars button {
+    color: rgb(58 68 87)
+}
+html[data-theme="light"] .review-popup-stars button.is-on {
+    color: rgb(223 161 0);
+    text-shadow: 0 0 18px rgb(255 255 255 / 0%)
+}
+html[data-theme="light"] .review-popup-stars button:focus-visible {
+    outline: 2px solid rgb(0 62 198)
+}
+html[data-theme="light"] .review-popup .review-popup-word {
+    color: rgb(10 20 41)
+}
+html[data-theme="light"] .review-popup-feedback {
+    color: rgb(61 83 122)
+}
+html[data-theme="light"] .review-popup-feedback textarea {
+    background: rgb(245 247 251);
+    color: rgb(10 20 41)
+}
+html[data-theme="light"] .review-popup-feedback textarea:focus {
+    border-color: rgb(0 62 198)
+}
+html[data-theme="light"] .review-popup .review-popup-error {
+    color: rgb(184 0 0)
+}
+html[data-theme="light"] .review-popup-confetti i {
+    background: rgb(57 119 255);
+    color: #fff
+}
+html[data-theme="light"] .review-popup-confetti i:nth-child(3n) {
+    background: rgb(34 197 94);
+    color: #fff
+}
+html[data-theme="light"] .review-popup-confetti i:nth-child(3n + 1) {
+    background: rgb(251 191 36);
+    color: #fff
+}
+html[data-theme="light"] .review-popup-confetti i:nth-child(4n) {
+    background: rgb(236 72 153);
+    color: #fff
 }
 
 html[data-theme="light"] {

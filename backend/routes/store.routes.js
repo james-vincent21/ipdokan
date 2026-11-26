@@ -5,6 +5,7 @@ import { confirmCryptomusPayment, createCryptomusInvoice } from "../controllers/
 import { listProxyStore } from "../controllers/supplier.controller.js";
 import { getSiteStatus } from "../controllers/site-status.controller.js";
 import { confirmTopup, createTopup, getWallet, getWalletBalance, payWithWallet } from "../controllers/wallet.controller.js";
+import { checkCoupon } from "../controllers/coupon.controller.js";
 import { listNotifications, markNotificationsRead, setNotificationRead } from "../lib/realtime.js";
 import { addProductReview, completeDemoPayment, createOrder, createStripeCheckout, listMyOrders, listProductReviews, listProducts, paymentMode, toggleProductReviewLike } from "../controllers/store.controller.js";
 
@@ -16,6 +17,7 @@ router.get("/payments/mode", paymentMode);
 router.get("/products/:id/reviews", optionalAuth, listProductReviews);
 router.post("/products/:id/reviews", requireAuth, addProductReview);
 router.post("/products/:id/reviews/:reviewId/like", requireAuth, toggleProductReviewLike);
+router.post("/coupons/check", optionalAuth, checkCoupon);
 router.use("/orders", requireAuth);
 router.get("/orders", listMyOrders);
 router.post("/orders", createOrder);

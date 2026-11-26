@@ -9,6 +9,7 @@ import { SUPPLIER_CATEGORIES, SupplierError, availableBalanceUsd, categoryLocati
 import { SUPPLIER_MAX_QUANTITY, fulfillSupplierOrder, lowestSetPrice, supplierVariantsInput } from "./supplier.controller.js";
 import { withServiceFee } from "../utils/service-fee.js";
 import { notifyOrderPaid } from "../lib/order-notifications.js";
+import { CouponError, normalizeCouponCode, orderDiscount, validCheckoutId } from "./coupon.controller.js";
 
 function parseCodeList(input) {
   const list = Array.isArray(input) ? input : typeof input === "string" ? input.split(/\r?\n/) : [];
@@ -44,10 +45,23 @@ async function findUsedCode(codes) {
 
 const usedCodeMessage = (code) => `The code "${code}" has already been added or sold before. Each code can only be used once.`;
 
-// Order price fields: the product price plus the service fee; `amount` is what the gateway charges.
-function orderCharge(productTotal) {
-  const { subtotal, serviceFee, total } = withServiceFee(productTotal);
-  return { subtotal, serviceFee, serviceFeePercent: config.serviceFeePercent, amount: total };
+// Order price fields: the product price, less any coupon discount, plus the service fee; `amount` is what the gateway charges.
+function orderCharge(productTotal, discount = 0) {
+  const subtotal = withServiceFee(productTotal).subtotal;
+  const { serviceFee, total } = withServiceFee(subtotal - discount);
+  return { subtotal, discount, serviceFee, serviceFeePercent: config.serviceFeePercent, amount: total };
+}
+
+// Price fields for a new order, with the coupon from the request applied (if any).
+// Throws CouponError when the buyer entered a coupon that cannot be used.
+async function chargeWithCoupon(req, productTotal, currency) {
+  const checkoutId = validCheckoutId(req.body?.checkoutId) ? req.body.checkoutId : "";
+  const code = normalizeCouponCode(req.body?.couponCode);
+  if (!code) return { ...orderCharge(productTotal), checkoutId };
+  if (!checkoutId) throw new CouponError("Refresh the page and apply the coupon again.");
+  const subtotal = withServiceFee(productTotal).subtotal;
+  const { couponId, couponCode, discount } = await orderDiscount({ code, checkoutId, userId: String(req.user.id), currency, subtotal });
+  return { ...orderCharge(productTotal, discount), couponId, couponCode, checkoutId };
 }
 
 function getInvoiceId(order) {
@@ -146,7 +160,7 @@ export async function addProductReview(req, res, next) {
     const rating = Number(req.body?.rating);
     const comment = typeof req.body?.comment === "string" ? req.body.comment.trim() : "";
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) return res.status(400).json({ error: "Rating must be between 1 and 5." });
-    if (!comment || comment.length > 1000) return res.status(400).json({ error: "Review comment must be between 1 and 1000 characters." });
+    if (comment.length > 1000) return res.status(400).json({ error: "Feedback must be 1000 characters or fewer." });
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ error: "Product not found." });
     if (product.reviews.some((review) => String(review.userId) === String(req.user.id))) return res.status(409).json({ error: "You have already reviewed this product." });
@@ -243,7 +257,10 @@ export async function createOrder(req, res, next) {
     if (!product) return res.status(404).json({ error: "Product not found." });
     const variant = req.body?.variantId ? product.variants.id(req.body.variantId) : null;
     if (req.body?.variantId && !variant) return res.status(404).json({ error: "Product variant not found." });
-    if (product.source === "myproxyapi") return createSupplierOrder(req, res, { product, variant, quantity, currency });
+    if (product.source === "myproxyapi") return await createSupplierOrder(req, res, { product, variant, quantity, currency });
+    const charge = await chargeWithCoupon(req, (currency === "BDT"
+      ? (variant?.priceBdt ?? product.priceBdt)
+      : (variant?.priceUsd ?? product.priceUsd ?? variant?.price ?? product.price)) * quantity, currency);
     const sharedVariantStock = Boolean(variant && variant.stockQuantity !== null && variant.stockQuantity !== undefined);
     if (sharedVariantStock && quantity > 1) return res.status(409).json({ error: `${variant.name} has only one shared code, so it can be bought one at a time. Ask the store to add separate codes for this plan.` });
     if (sharedVariantStock) {
@@ -267,9 +284,7 @@ export async function createOrder(req, res, next) {
       codeNumber: product.codeNumber,
       variantId: variant?._id || null,
       variantName: variant?.name || "",
-      ...orderCharge((currency === "BDT"
-        ? (variant?.priceBdt ?? product.priceBdt)
-        : (variant?.priceUsd ?? product.priceUsd ?? variant?.price ?? product.price)) * quantity),
+      ...charge,
       currency,
       quantity,
     });
@@ -303,8 +318,11 @@ export async function createOrder(req, res, next) {
       else await Product.updateOne({ _id: product._id }, { $set: { "codes.$[code].status": "available", "codes.$[code].orderId": null } }, { arrayFilters: [{ "code.orderId": order._id, "code.status": "reserved" }] });
       throw error;
     }
-    res.status(201).json({ order: { id: order.id, productName: order.productName, quantity: order.quantity, amount: order.amount, currency: order.currency, status: order.status }, message: "Order created. Your codes will appear in your purchase history after payment is confirmed." });
-  } catch (error) { next(error); }
+    res.status(201).json({ order: { id: order.id, productName: order.productName, quantity: order.quantity, amount: order.amount, discount: order.discount, currency: order.currency, status: order.status }, message: "Order created. Your codes will appear in your purchase history after payment is confirmed." });
+  } catch (error) {
+    if (error instanceof CouponError) return res.status(400).json({ error: error.message });
+    next(error);
+  }
 }
 
 // The buyer's public IPv4 address, added to the proxy's authentication whitelist.
@@ -340,6 +358,7 @@ async function createSupplierOrder(req, res, { product, variant, quantity, curre
     locations = location.id;
     locationName = location.name;
   }
+  const charge = await chargeWithCoupon(req, (currency === "BDT" ? variant.priceBdt : (variant.priceUsd ?? variant.price)) * quantity, currency);
   const whitelistIp = isIpv4(req.body?.whitelistIp) ? req.body.whitelistIp.trim() : customerIpv4(req);
   if (!whitelistIp) return res.status(400).json({ error: "We could not detect your public IPv4 address, which the proxy needs. Turn off any VPN and try again, or contact support." });
   let costUsd;
@@ -372,7 +391,7 @@ async function createSupplierOrder(req, res, { product, variant, quantity, curre
     codeNumber: product.codeNumber,
     variantId: variant._id,
     variantName: locationName ? `${variant.name} · ${locationName}` : variant.name,
-    ...orderCharge((currency === "BDT" ? variant.priceBdt : (variant.priceUsd ?? variant.price)) * quantity),
+    ...charge,
     currency,
     quantity,
     source: "myproxyapi",
@@ -382,13 +401,16 @@ async function createSupplierOrder(req, res, { product, variant, quantity, curre
   });
   order.invoiceId = getInvoiceId(order);
   await order.save();
-  res.status(201).json({ order: { id: order.id, productName: order.productName, quantity: order.quantity, amount: order.amount, currency: order.currency, status: order.status }, message: "Order created. After payment your proxy is prepared automatically and arrives within 3–5 minutes." });
+  res.status(201).json({ order: { id: order.id, productName: order.productName, quantity: order.quantity, amount: order.amount, discount: order.discount, currency: order.currency, status: order.status }, message: "Order created. After payment your proxy is prepared automatically and arrives within 3–5 minutes." });
 }
 
 export async function listMyOrders(req, res, next) {
   try {
     const orders = await Order.find({ userId: req.user.id }).sort({ createdAt: -1 }).lean();
-    res.json({ orders: orders.map((order) => ({ id: order._id, invoiceId: getInvoiceId(order), productId: order.productId, productName: order.productName, variantName: order.variantName || "", codeNumber: order.codeNumber, quantity: order.quantity || 1, amount: order.amount, currency: order.currency, status: order.status, paymentMethod: order.paymentMethod || "", deliveredCode: order.status === "paid" ? order.deliveredCode : "", deliveredCodes: order.status === "paid" ? (order.deliveredCodes?.length ? order.deliveredCodes : order.deliveredCode ? [order.deliveredCode] : []) : [], isProxyOrder: order.source === "myproxyapi", deliveryPending: Boolean(order.supplierDeliveryPending), createdAt: order.createdAt, paidAt: order.paidAt })) });
+    // Products this customer has already rated, so the "rate your purchase" pop-up is not shown for them again.
+    const productIds = [...new Set(orders.filter((order) => order.status === "paid").map((order) => String(order.productId)))];
+    const reviewed = new Set(productIds.length ? (await Product.find({ _id: { $in: productIds }, "reviews.userId": String(req.user.id) }, { _id: 1 }).lean()).map((product) => String(product._id)) : []);
+    res.json({ orders: orders.map((order) => ({ id: order._id, invoiceId: getInvoiceId(order), productId: order.productId, productName: order.productName, variantName: order.variantName || "", codeNumber: order.codeNumber, quantity: order.quantity || 1, amount: order.amount, discount: order.discount || 0, couponCode: order.couponCode || "", reviewed: reviewed.has(String(order.productId)), currency: order.currency, status: order.status, paymentMethod: order.paymentMethod || "", deliveredCode: order.status === "paid" ? order.deliveredCode : "", deliveredCodes: order.status === "paid" ? (order.deliveredCodes?.length ? order.deliveredCodes : order.deliveredCode ? [order.deliveredCode] : []) : [], isProxyOrder: order.source === "myproxyapi", deliveryPending: Boolean(order.supplierDeliveryPending), createdAt: order.createdAt, paidAt: order.paidAt })) });
   } catch (error) { next(error); }
 }
 
