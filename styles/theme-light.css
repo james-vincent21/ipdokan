@@ -2452,6 +2452,18 @@ html[data-theme="light"] .review-popup-confetti i:nth-child(4n) {
     background: rgb(236 72 153);
     color: #fff
 }
+html[data-theme="light"] .admin-coupon-products legend {
+    color: rgb(61 83 122)
+}
+html[data-theme="light"] .admin-coupon-scope-line {
+    color: rgb(39 51 70) !important
+}
+html[data-theme="light"] .admin-coupon-customers {
+    border-bottom: 1px solid rgb(15 23 42 / 7.2%)
+}
+html[data-theme="light"] .admin-coupon-discount {
+    color: rgb(45 182 115)
+}
 
 html[data-theme="light"] {
   color-scheme: light;

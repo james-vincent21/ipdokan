@@ -54,13 +54,13 @@ function orderCharge(productTotal, discount = 0) {
 
 // Price fields for a new order, with the coupon from the request applied (if any).
 // Throws CouponError when the buyer entered a coupon that cannot be used.
-async function chargeWithCoupon(req, productTotal, currency) {
+async function chargeWithCoupon(req, productTotal, currency, productId) {
   const checkoutId = validCheckoutId(req.body?.checkoutId) ? req.body.checkoutId : "";
   const code = normalizeCouponCode(req.body?.couponCode);
   if (!code) return { ...orderCharge(productTotal), checkoutId };
   if (!checkoutId) throw new CouponError("Refresh the page and apply the coupon again.");
   const subtotal = withServiceFee(productTotal).subtotal;
-  const { couponId, couponCode, discount } = await orderDiscount({ code, checkoutId, userId: String(req.user.id), currency, subtotal });
+  const { couponId, couponCode, discount } = await orderDiscount({ code, checkoutId, userId: String(req.user.id), currency, subtotal, productId });
   return { ...orderCharge(productTotal, discount), couponId, couponCode, checkoutId };
 }
 
@@ -260,7 +260,7 @@ export async function createOrder(req, res, next) {
     if (product.source === "myproxyapi") return await createSupplierOrder(req, res, { product, variant, quantity, currency });
     const charge = await chargeWithCoupon(req, (currency === "BDT"
       ? (variant?.priceBdt ?? product.priceBdt)
-      : (variant?.priceUsd ?? product.priceUsd ?? variant?.price ?? product.price)) * quantity, currency);
+      : (variant?.priceUsd ?? product.priceUsd ?? variant?.price ?? product.price)) * quantity, currency, product._id);
     const sharedVariantStock = Boolean(variant && variant.stockQuantity !== null && variant.stockQuantity !== undefined);
     if (sharedVariantStock && quantity > 1) return res.status(409).json({ error: `${variant.name} has only one shared code, so it can be bought one at a time. Ask the store to add separate codes for this plan.` });
     if (sharedVariantStock) {
@@ -358,7 +358,7 @@ async function createSupplierOrder(req, res, { product, variant, quantity, curre
     locations = location.id;
     locationName = location.name;
   }
-  const charge = await chargeWithCoupon(req, (currency === "BDT" ? variant.priceBdt : (variant.priceUsd ?? variant.price)) * quantity, currency);
+  const charge = await chargeWithCoupon(req, (currency === "BDT" ? variant.priceBdt : (variant.priceUsd ?? variant.price)) * quantity, currency, product._id);
   const whitelistIp = isIpv4(req.body?.whitelistIp) ? req.body.whitelistIp.trim() : customerIpv4(req);
   if (!whitelistIp) return res.status(400).json({ error: "We could not detect your public IPv4 address, which the proxy needs. Turn off any VPN and try again, or contact support." });
   let costUsd;

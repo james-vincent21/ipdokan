@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { Coupon } from "../models/coupon.model.js";
 import { Order } from "../models/order.model.js";
+import { Product } from "../models/product.model.js";
 
 const roundMoney = (value) => Math.round(value * 100) / 100;
 const CODE_PATTERN = /^[A-Z0-9_-]{3,40}$/;
@@ -12,8 +13,10 @@ export class CouponError extends Error {}
 export const normalizeCouponCode = (value) => (typeof value === "string" ? value.trim().toUpperCase() : "");
 export const validCheckoutId = (value) => typeof value === "string" && CHECKOUT_ID_PATTERN.test(value);
 
+const appliesTo = (coupon, productId) => !coupon.productIds?.length || coupon.productIds.some((id) => String(id) === String(productId));
+
 function publicCoupon(coupon) {
-  return { code: coupon.code, type: coupon.type, percent: coupon.percent, amountUsd: coupon.amountUsd, amountBdt: coupon.amountBdt };
+  return { code: coupon.code, type: coupon.type, percent: coupon.percent, amountUsd: coupon.amountUsd, amountBdt: coupon.amountBdt, productIds: (coupon.productIds || []).map(String) };
 }
 
 // Throws CouponError with a message for the customer when the coupon cannot be used.
@@ -34,10 +37,12 @@ async function usableCoupon(code, userId, checkoutId = "") {
 }
 
 // The discount for one order. `subtotal` is the product price × quantity in `currency`.
+// Returns no discount (and no coupon) for a product the coupon does not cover, so the rest of a cart still gets it.
 // A fixed-amount coupon is spread over the orders of one checkout until it is used up.
 // The order always keeps at least 1% of its price, so no payment is ever zero.
-export async function orderDiscount({ code, checkoutId, userId, currency, subtotal }) {
+export async function orderDiscount({ code, checkoutId, userId, currency, subtotal, productId }) {
   const coupon = await usableCoupon(code, userId, checkoutId);
+  if (!appliesTo(coupon, productId)) return { couponId: null, couponCode: "", discount: 0 };
   let discount;
   if (coupon.type === "percent") discount = roundMoney(subtotal * coupon.percent / 100);
   else {
@@ -50,10 +55,13 @@ export async function orderDiscount({ code, checkoutId, userId, currency, subtot
   return { couponId: coupon._id, couponCode: coupon.code, discount: Math.max(0, discount) };
 }
 
-// POST /api/coupons/check  { code }  → the coupon's terms, so the checkout can show the discounted total.
+// POST /api/coupons/check  { code, productIds }  → the coupon's terms, so the checkout can show the discounted total.
+// `productIds`: the products being bought; the coupon must cover at least one of them.
 export async function checkCoupon(req, res, next) {
   try {
     const coupon = await usableCoupon(req.body?.code, req.user?.id || "");
+    const productIds = Array.isArray(req.body?.productIds) ? req.body.productIds.map(String) : [];
+    if (productIds.length && !productIds.some((id) => appliesTo(coupon, id))) throw new CouponError(productIds.length === 1 ? "This coupon does not work for this product." : "This coupon does not work for any product in your cart.");
     res.json({ coupon: publicCoupon(coupon) });
   } catch (error) {
     if (error instanceof CouponError) return res.status(400).json({ error: error.message });
@@ -77,7 +85,9 @@ function couponInput(body) {
     expiresAt = new Date(body.expiresAt);
     if (Number.isNaN(expiresAt.getTime())) throw new CouponError("Expiry date is not valid.");
   }
-  return { code, type, percent, amountUsd: roundMoney(amountUsd), amountBdt: roundMoney(amountBdt), maxUses, expiresAt, onePerUser: body?.onePerUser !== false, active: body?.active !== false };
+  const productIds = [...new Set((Array.isArray(body?.productIds) ? body.productIds : []).map(String))];
+  if (productIds.some((id) => !mongoose.isValidObjectId(id))) throw new CouponError("One of the chosen products is not valid.");
+  return { code, type, percent, amountUsd: roundMoney(amountUsd), amountBdt: roundMoney(amountBdt), maxUses, expiresAt, onePerUser: body?.onePerUser !== false, active: body?.active !== false, productIds };
 }
 
 async function withUsage(coupons) {
@@ -105,6 +115,7 @@ export async function createCoupon(req, res, next) {
   try {
     const input = couponInput(req.body);
     if (await Coupon.exists({ code: input.code })) return res.status(409).json({ error: `A coupon named ${input.code} already exists.` });
+    if (input.productIds.length && await Product.countDocuments({ _id: { $in: input.productIds } }) !== input.productIds.length) return res.status(400).json({ error: "One of the chosen products no longer exists. Refresh and try again." });
     const coupon = await Coupon.create({ ...input, createdBy: String(req.user.email || "").toLowerCase() });
     res.status(201).json({ coupon: (await withUsage([coupon.toObject()]))[0] });
   } catch (error) {
@@ -121,6 +132,15 @@ export async function updateCoupon(req, res, next) {
     const coupon = await Coupon.findByIdAndUpdate(req.params.id, { $set: { active: req.body.active } }, { new: true }).lean();
     if (!coupon) return res.status(404).json({ error: "Coupon not found." });
     res.json({ coupon: (await withUsage([coupon]))[0] });
+  } catch (error) { next(error); }
+}
+
+// GET /admin/coupons/:id/orders → every order that used the coupon: who bought what, the discount, and whether it was paid.
+export async function couponOrders(req, res, next) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ error: "Invalid coupon id." });
+    const orders = await Order.find({ couponId: req.params.id }).sort({ createdAt: -1 }).limit(500).lean();
+    res.json({ orders: orders.map((order) => ({ id: String(order._id), invoiceId: order.invoiceId, userId: order.userId, userName: order.userName, userEmail: order.userEmail, productName: order.productName, variantName: order.variantName, quantity: order.quantity, currency: order.currency, subtotal: order.subtotal, discount: order.discount, amount: order.amount, status: order.status, paymentMethod: order.paymentMethod, createdAt: order.createdAt, paidAt: order.paidAt })) });
   } catch (error) { next(error); }
 }
 

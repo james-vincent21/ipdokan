@@ -205,8 +205,7 @@ a { color: inherit; }
 .order-status-pending, .order-status-processing { border-color: rgb(237 179 76 / 28%); color: #edc36c; }
 .delivered-code { grid-column: 1 / -1; display: block; overflow-wrap: anywhere; border-radius: 7px; background: #090d15; padding: 10px; color: #9ebaff; font-size: 12px; }
 .checkout-delivery-card > article { display: grid; gap: 8px; margin-top: 12px; color: #e8edf8; }
-.catalog-product-card .popular-product-art > img { width: 100%; height: 100%; object-fit: cover; }
-.popular-product-art > img { width: 100%; height: 100%; object-fit: cover; }
+.catalog-product-card .popular-product-art > img, .popular-product-art > img { width: 100%; height: 100%; object-fit: contain; }
 .catalog-product-description { display: block; margin-top: 8px; color: #a4adbf; font-size: 12px; line-height: 1.55; }
 .catalog-home-cta { display: block; margin-top: 15px; color: #9ebaff; font-size: 12px; font-weight: 700; }
 .catalog-buy-button { width: 100%; margin-top: 15px; }
@@ -1721,3 +1720,13 @@ html[data-theme="light"] .footer-protected-badge { border-color: #dce2ec; backgr
 @keyframes review-confetti { 0% { opacity: 1; transform: translateY(0) rotate(0); } 100% { opacity: 0; transform: translateY(460px) rotate(540deg); } }
 @media (prefers-reduced-motion: reduce) { .review-popup, .review-popup-badge, .review-popup-confetti i { animation: none; } .review-popup-confetti { display: none; } }
 @media (max-width: 480px) { .review-popup { padding: 26px 18px 20px; } .review-popup-stars button { font-size: 34px; } .review-popup-actions { flex-direction: column-reverse; } }
+.admin-coupon-products { display: grid; gap: 10px; grid-column: 1 / -1; min-width: 0; margin: 0; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.admin-coupon-products legend { padding: 0 6px; color: #cbd4e4; font-size: 11px; font-weight: 700; }
+.admin-coupon-scope { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.admin-form .admin-coupon-product-search { height: 36px; }
+.admin-coupon-product-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px 16px; max-height: 240px; overflow-y: auto; padding: 2px; }
+.admin-coupon-product-list label { font-weight: 500; }
+.admin-coupon-scope-line { color: #b9c5d8 !important; }
+.admin-coupon-customers { display: grid; gap: 10px; border-bottom: 1px solid rgb(255 255 255 / 6%); padding: 4px 0 16px; }
+.admin-coupon-table tr.is-muted td { opacity: .6; }
+.admin-coupon-discount { color: #4ccf8f; font-weight: 700; }

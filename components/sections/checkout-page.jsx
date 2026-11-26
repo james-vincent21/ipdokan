@@ -164,8 +164,8 @@ export function CheckoutPage() {
   const locationError = needsLocation && !selectedLocation ? "Choose a location first." : needsLocation && selectedLocation.stock < (selectedVariant.ips || 1) * Number(quantity || 1) ? `${selectedLocation.name} does not have enough IPs for this plan. Choose another location.` : "";
   // Per currency: product subtotal, the service fee, and the total the customer pays.
   const totals = useMemo(() => Object.fromEntries([...new Set(cart.map((item) => item.currency))].map((currency) => [currency,
-    checkoutCharge(cart.filter((item) => item.currency === currency).map((item) => item.price * item.quantity), coupon, currency, serviceFeePercent)])), [cart, coupon, serviceFeePercent]);
-  const productCharge = checkoutCharge([selectedPaymentPrice * Number(quantity || 0)], coupon, paymentCurrency, serviceFeePercent);
+    checkoutCharge(cart.filter((item) => item.currency === currency).map((item) => item.price * item.quantity), coupon, currency, serviceFeePercent, cart.filter((item) => item.currency === currency).map((item) => item.productId))])), [cart, coupon, serviceFeePercent]);
+  const productCharge = checkoutCharge([selectedPaymentPrice * Number(quantity || 0)], coupon, paymentCurrency, serviceFeePercent, [selectedProduct?.id]);
 
   // API proxies are bought on the proxy store page (same interface as the nav), so old links redirect there.
   useEffect(() => {
@@ -300,9 +300,9 @@ export function CheckoutPage() {
   function chooserAmounts(kind) {
     if (kind === "product") {
       const amount = Number(quantity || 0);
-      return Object.fromEntries([["BDT", selectedPriceBdt], ["USD", selectedPriceUsd]].map(([currency, price]) => [currency, couponWorksIn(coupon, currency) ? checkoutCharge([price * amount], coupon, currency, serviceFeePercent).total : 0]));
+      return Object.fromEntries([["BDT", selectedPriceBdt], ["USD", selectedPriceUsd]].map(([currency, price]) => [currency, couponWorksIn(coupon, currency) ? checkoutCharge([price * amount], coupon, currency, serviceFeePercent, [selectedProduct?.id]).total : 0]));
     }
-    return Object.fromEntries(["BDT", "USD"].map((currency) => [currency, couponWorksIn(coupon, currency) ? checkoutCharge(cart.map((item) => linePrice(item, currency) * item.quantity), coupon, currency, serviceFeePercent).total : 0]));
+    return Object.fromEntries(["BDT", "USD"].map((currency) => [currency, couponWorksIn(coupon, currency) ? checkoutCharge(cart.map((item) => linePrice(item, currency) * item.quantity), coupon, currency, serviceFeePercent, cart.map((item) => item.productId)).total : 0]));
   }
 
   // With hosted gateways, "Buy now" / "Place order" first opens the payment method chooser.
@@ -434,7 +434,7 @@ export function CheckoutPage() {
           <p className="product-detail-stock">{selectedAvailable > 0 ? `${selectedAvailable} available` : "Out of stock"}</p>
           <div className="product-quantity-control"><span>Quantity</span><div><button type="button" aria-label="Decrease quantity" disabled={Number(quantity) <= 1} onClick={() => setQuantity(String(Math.max(1, Number(quantity) - 1)))}>−</button><output>{quantity}</output><button type="button" aria-label="Increase quantity" disabled={Number(quantity) >= selectedAvailable} onClick={() => setQuantity(String(Math.min(selectedAvailable, Number(quantity) + 1)))}>+</button></div></div>
           {priceMissing ? <div className="product-detail-actions"><a className="auth-submit product-purchase-button" href="https://t.me/IpDokan" target="_blank" rel="noreferrer">Contact admin</a><p className="product-contact-note">The price for this plan is not set yet. Message admin on Telegram to order it.</p></div> : <>
-          <CouponRedeem coupon={coupon} onChange={setCoupon} currency={paymentCurrency} formatPrice={formatPrice} disabled={busy} />
+          <CouponRedeem coupon={coupon} onChange={setCoupon} currency={paymentCurrency} formatPrice={formatPrice} disabled={busy} productIds={[selectedProduct.id]} />
           <div className="product-detail-charges"><p><span>Price</span><span>{formatPrice(productCharge.subtotal, paymentCurrency)}</span></p>{productCharge.discount > 0 && <p className="is-discount"><span>Coupon ({coupon.code})</span><span>−{formatPrice(productCharge.discount, paymentCurrency)}</span></p>}<p><span>Service &amp; additional fee ({serviceFeePercent}%)</span><span>{formatPrice(productCharge.serviceFee, paymentCurrency)}</span></p></div>
           <p className="product-detail-total">Total <strong>{formatPrice(productCharge.total, paymentCurrency)}</strong></p>
           {selectedVariant?.ips > 0 && productCharge.total > 0 && <p className="product-detail-per-ip">{selectedVariant.ips * Number(quantity || 0)} {selectedVariant.ips * Number(quantity || 0) === 1 ? "IP" : "IPs"} ·{formatPrice(productCharge.total / (selectedVariant.ips * Number(quantity || 1)), paymentCurrency)} per IP incl. fee</p>}
@@ -474,7 +474,7 @@ export function CheckoutPage() {
             <strong className="checkout-line-total">{formatPrice(item.price * item.quantity, item.currency)}</strong>
             <button className="checkout-remove" type="button" onClick={() => persistCart(cart.filter((entry) => !(entry.productId === item.productId && (entry.variantId || "") === (item.variantId || ""))))}>Remove</button>
           </article>)}</div>
-          <CouponRedeem coupon={coupon} onChange={setCoupon} currency={paymentCurrency} formatPrice={formatPrice} disabled={busy} />
+          <CouponRedeem coupon={coupon} onChange={setCoupon} currency={paymentCurrency} formatPrice={formatPrice} disabled={busy} productIds={[...new Set(cart.map((item) => item.productId))]} />
           <div className="checkout-totals">{Object.entries(totals).map(([currency, charge]) => <div className="checkout-total-group" key={currency}>
             <p><span>Subtotal ({currency})</span><span>{formatPrice(charge.subtotal, currency)}</span></p>
             {charge.discount > 0 && <p className="is-discount"><span>Coupon ({coupon.code})</span><span>−{formatPrice(charge.discount, currency)}</span></p>}

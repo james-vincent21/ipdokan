@@ -5,7 +5,7 @@ import { addAdminEmail, addCodes, addProduct, adminOrders, adminOverview, adminP
 import { IMAGE_TYPES, MAX_IMAGE_BYTES, imageTooLarge, uploadProductImage } from "../controllers/upload.controller.js";
 import { adminGetSiteStatus, setDevMode } from "../controllers/site-status.controller.js";
 import { banUser, creditUserWallet, debitUserWallet, deleteUser, lookupUser, recentTopups, searchUsers, unbanUser } from "../controllers/admin-users.controller.js";
-import { createCoupon, deleteCoupon, listCoupons, updateCoupon } from "../controllers/coupon.controller.js";
+import { couponOrders, createCoupon, deleteCoupon, listCoupons, updateCoupon } from "../controllers/coupon.controller.js";
 import { importSupplierProducts, retrySupplierDelivery, setSupplierDelivery, supplierPlans, supplierPrice, supplierStatus } from "../controllers/supplier.controller.js";
 
 const router = Router();
@@ -36,6 +36,7 @@ router.delete("/users/:id", deleteUser);
 router.get("/coupons", listCoupons);
 router.post("/coupons", createCoupon);
 router.patch("/coupons/:id", updateCoupon);
+router.get("/coupons/:id/orders", couponOrders);
 router.delete("/coupons/:id", deleteCoupon);
 router.get("/reviews", adminReviews);
 router.patch("/products/:id/reviews/:reviewId/reply", replyToProductReview);
