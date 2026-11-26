@@ -2,8 +2,9 @@
 
 import { Fragment, useEffect, useState } from "react";
 import { useErrorToast } from "@/lib/toast";
+import { AdminUserPicker } from "./admin-user-picker";
 
-const emptyCoupon = { code: "", type: "percent", percent: "10", amountUsd: "", amountBdt: "", maxUses: "", expiresAt: "", onePerUser: true, allProducts: true, productIds: [] };
+const emptyCoupon = { code: "", type: "percent", percent: "10", amountUsd: "", amountBdt: "", maxUses: "", expiresAt: "", onePerUser: true, allProducts: true, productIds: [], everyone: true, users: [] };
 const STATUS_LABEL = { pending: "Awaiting payment", processing: "Processing", paid: "Paid", cancelled: "Cancelled" };
 
 function money(amount, currency) {
@@ -83,8 +84,9 @@ export function AdminCoupons({ api, products = [] }) {
     setBusy(true); setError(""); setNotice("");
     try {
       if (!form.allProducts && !form.productIds.length) throw new Error("Choose at least one product, or pick \"All products\".");
-      const { allProducts, ...fields } = form;
-      const body = { ...fields, productIds: allProducts ? [] : fields.productIds, expiresAt: form.expiresAt ? new Date(`${form.expiresAt}T23:59:59`).toISOString() : "" };
+      if (!form.everyone && !form.users.length) throw new Error("Choose at least one customer, or pick \"Every customer\".");
+      const { allProducts, everyone, users, ...fields } = form;
+      const body = { ...fields, productIds: allProducts ? [] : fields.productIds, allowedUserIds: everyone ? [] : users.map((user) => user.id), expiresAt: form.expiresAt ? new Date(`${form.expiresAt}T23:59:59`).toISOString() : "" };
       const result = await api("/admin/coupons", { method: "POST", body: JSON.stringify(body) });
       setCoupons((current) => [result.coupon, ...(current || [])]);
       setForm(emptyCoupon);
@@ -126,6 +128,18 @@ export function AdminCoupons({ api, products = [] }) {
         <label>Expires on <small>(optional)</small><input type="date" value={form.expiresAt} onChange={set("expiresAt")} /></label>
         <label className="admin-checkbox"><input type="checkbox" checked={form.onePerUser} onChange={set("onePerUser")} />Each customer can use it only once</label>
         <fieldset className="admin-coupon-products">
+          <legend>Who can use it</legend>
+          <div className="admin-coupon-scope">
+            <label className="admin-checkbox"><input type="radio" name="coupon-users" checked={form.everyone} onChange={() => setForm((current) => ({ ...current, everyone: true }))} />Every customer</label>
+            <label className="admin-checkbox"><input type="radio" name="coupon-users" checked={!form.everyone} onChange={() => setForm((current) => ({ ...current, everyone: false }))} />Only chosen customers{!form.everyone && form.users.length ? ` (${form.users.length})` : ""}</label>
+          </div>
+          {!form.everyone && <>
+            <AdminUserPicker api={api} exclude={form.users.map((user) => user.id)} onPick={(user) => setForm((current) => ({ ...current, users: [...current.users, user] }))} />
+            {form.users.length > 0 && <div className="admin-coupon-chips">{form.users.map((user) => <span key={user.id} className="admin-coupon-chip"><b>{user.name || "No name"}</b><small>{user.email}</small><button type="button" aria-label={`Remove ${user.email}`} onClick={() => setForm((current) => ({ ...current, users: current.users.filter((item) => item.id !== user.id) }))}>×</button></span>)}</div>}
+            <p className="admin-coupon-hint">Only these accounts can redeem it: the account and its email must both match, and the customer must be signed in.</p>
+          </>}
+        </fieldset>
+        <fieldset className="admin-coupon-products">
           <legend>Works on</legend>
           <div className="admin-coupon-scope">
             <label className="admin-checkbox"><input type="radio" name="coupon-scope" checked={form.allProducts} onChange={() => setForm((current) => ({ ...current, allProducts: true }))} />All products</label>
@@ -153,6 +167,7 @@ export function AdminCoupons({ api, products = [] }) {
             <strong><code className="admin-coupon-code">{coupon.code}</code> {couponValue(coupon)} <span className={`user-status${stateClass}`}>{state}</span></strong>
             <span>Used {coupon.uses}{coupon.maxUses > 0 ? ` / ${coupon.maxUses}` : ""} time{coupon.uses === 1 ? "" : "s"} ({coupon.paidUses} paid){coupon.onePerUser ? " · once per customer" : ""}{coupon.expiresAt ? ` · expires ${new Date(coupon.expiresAt).toLocaleDateString()}` : ""}</span>
             <span className="admin-coupon-scope-line">Works on: {productsLine(coupon, products)}</span>
+            <span className="admin-coupon-scope-line">For: {coupon.allowedUsers?.length ? coupon.allowedUsers.map((user) => `${user.name || "No name"} (${user.email})`).join(", ") : "Every customer"}</span>
             {(coupon.discountUsd > 0 || coupon.discountBdt > 0) && <small>Discount given on paid orders: {[coupon.discountUsd > 0 && money(coupon.discountUsd, "USD"), coupon.discountBdt > 0 && money(coupon.discountBdt, "BDT")].filter(Boolean).join(" + ")}</small>}
           </div>
           <button type="button" className="admin-secondary" aria-expanded={openId === coupon.id} onClick={() => setOpenId((current) => current === coupon.id ? "" : coupon.id)}>{openId === coupon.id ? "Hide customers" : `Customers (${coupon.paidUses} paid)`}</button>

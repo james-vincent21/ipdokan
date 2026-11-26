@@ -367,7 +367,7 @@ html[data-theme="dark"] .admin-crop-dialog > header button {
     background: transparent
 }
 html[data-theme="dark"] .admin-crop-stage {
-    background: rgb(31 32 35)
+    background: #ffffff
 }
 html[data-theme="dark"] .admin-form input,
 html[data-theme="dark"] .admin-form textarea {
@@ -467,6 +467,15 @@ html[data-theme="dark"] .popular-product-art.loki {
 }
 html[data-theme="dark"] .popular-product-art.xproxy {
     background: radial-gradient(ellipse at 50% 15%, #1579d8, transparent 49%), linear-gradient(135deg, #064c88, #07113d)
+}
+html[data-theme="dark"] .popular-product-buy {
+    background: #3977ff
+}
+html[data-theme="dark"] .popular-product-card:hover .popular-product-buy {
+    background: #4b82ff
+}
+html[data-theme="dark"] .popular-product-art:has(> img) {
+    background: #ffffff
 }
 html[data-theme="dark"] .view-products-button {
     background: rgb(43 91 184 / 15%)
@@ -1023,6 +1032,48 @@ html[data-theme="dark"] .review-popup-confetti i:nth-child(3n + 1) {
 }
 html[data-theme="dark"] .review-popup-confetti i:nth-child(4n) {
     background: #ec4899
+}
+html[data-theme="dark"] .admin-user-picker input {
+    background: rgb(33 35 38)
+}
+html[data-theme="dark"] .admin-user-picker-results {
+    background: rgb(39 41 45)
+}
+html[data-theme="dark"] .admin-user-picker-results button {
+    background: transparent
+}
+html[data-theme="dark"] .admin-user-picker-results button:hover {
+    background: rgb(57 119 255 / 14%)
+}
+html[data-theme="dark"] .admin-coupon-chip {
+    background: rgb(57 119 255 / 10%)
+}
+html[data-theme="dark"] .admin-coupon-chip button {
+    background: rgb(255 255 255 / 8%)
+}
+html[data-theme="dark"] .admin-activity-avatar {
+    background: linear-gradient(135deg, #3977ff, #8b5cf6)
+}
+html[data-theme="dark"] .admin-activity-types button {
+    background: transparent
+}
+html[data-theme="dark"] .admin-activity-types button.is-active {
+    background: #3977ff
+}
+html[data-theme="dark"] .admin-activity-icon {
+    background: rgb(255 255 255 / 5%)
+}
+html[data-theme="dark"] .admin-activity-list li.is-login .admin-activity-icon {
+    background: rgb(251 191 36 / 14%)
+}
+html[data-theme="dark"] .admin-activity-list li.is-click .admin-activity-icon {
+    background: rgb(57 119 255 / 14%)
+}
+html[data-theme="dark"] .admin-activity-body code {
+    background: rgb(255 255 255 / 6%)
+}
+html[data-theme="dark"] .admin-activity-who {
+    background: transparent
 }
 
 html[data-theme="dark"] .popular-product-card, html[data-theme="dark"] .store-product-card, html[data-theme="dark"] .proxy-plan-card, html[data-theme="dark"] .proxy-type-card:not(.is-selected), html[data-theme="dark"] .benefit-card, html[data-theme="dark"] .service-card, html[data-theme="dark"] .overview-service-card, html[data-theme="dark"] .trust-feature { text-shadow: 0 1px 2px rgb(0 0 0 / 35%); }

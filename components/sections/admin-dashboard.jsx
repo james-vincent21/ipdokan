@@ -8,13 +8,14 @@ import { SupplierImport, SupplierOrderActions, SupplierPlanBrowser, SupplierVari
 import { AdminWalletCredit } from "./admin-wallet-credit";
 import { AdminDevMode } from "./admin-dev-mode";
 import { AdminCoupons } from "./admin-coupons";
+import { AdminActivity } from "./admin-activity";
 import { AdminTopups, PAYMENT_METHOD_LABEL } from "./admin-topups";
 import { OrderFilterBar, buildRevenueChart, defaultOrderFilter, filterOrders, isFilterActive, summarizeOrders, variantOptions } from "./admin-order-filter";
 import { useErrorToast } from "@/lib/toast";
 
 const CHANNEL_LABEL = { bkash: "bKash", nagad: "Nagad", rocket: "Rocket", upay: "Upay" };
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-const tabs = ["Overview", "Products", "Orders", "Users", "Coupons", "Reviews", "Product history", "Admins"];
+const tabs = ["Overview", "Products", "Orders", "Users", "Activity", "Coupons", "Reviews", "Product history", "Admins"];
 const productCategories = ["Discount Proxy Panel", "Monthly ISP Proxy", "Dedicated Servers", "Private Proxy", "Residential Static Proxy", "VPS"];
 const parseCodes = (text) => String(text || "").split(/\r?\n/).map((code) => code.trim()).filter(Boolean);
 const emptyVariant = { name: "", capacity: "", unit: "GB", price: "", priceUsd: "", priceBdt: "", codesText: "" };
@@ -47,6 +48,14 @@ export function AdminDashboard() {
   const [imageError, setImageError] = useState("");
   const [cropImage, setCropImage] = useState(null);
   const [cropZoom, setCropZoom] = useState(1);
+  // Customer whose activity log opens when "Activity" is clicked in the Users tab.
+  const [activityUser, setActivityUser] = useState(null);
+  // Keeps the image covering the 320px crop square when it is bigger, or inside it when zoomed out smaller.
+  const clampCrop = (offset, image, zoom) => {
+    const axis = (value, size) => size >= 320 ? Math.min(0, Math.max(320 - size, value)) : Math.max(0, Math.min(320 - size, value));
+    const scale = image.baseScale * zoom;
+    return { x: axis(offset.x, image.width * scale), y: axis(offset.y, image.height * scale) };
+  };
   const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
   const cropDrag = useRef(null);
   const cropStage = useRef(null);
@@ -79,9 +88,11 @@ export function AdminDashboard() {
     const image = new Image();
     image.onload = () => {
       const scale = Math.max(320 / image.naturalWidth, 320 / image.naturalHeight);
+      // Starts zoomed to fit, so the whole image shows; zooming in crops, zooming out adds white space around it.
+      const fitZoom = Math.min(320 / image.naturalWidth, 320 / image.naturalHeight) / scale;
       setCropImage({ file, image, src, width: image.naturalWidth, height: image.naturalHeight, baseScale: scale });
-      setCropZoom(1);
-      setCropOffset({ x: (320 - image.naturalWidth * scale) / 2, y: (320 - image.naturalHeight * scale) / 2 });
+      setCropZoom(fitZoom);
+      setCropOffset({ x: (320 - image.naturalWidth * scale * fitZoom) / 2, y: (320 - image.naturalHeight * scale * fitZoom) / 2 });
     };
     image.onerror = () => { URL.revokeObjectURL(src); setImageError("This image could not be opened."); };
     image.src = src;
@@ -92,11 +103,7 @@ export function AdminDashboard() {
     const rect = cropStage.current.getBoundingClientRect();
     const dx = (event.clientX - cropDrag.current.x) * (320 / rect.width);
     const dy = (event.clientY - cropDrag.current.y) * (320 / rect.height);
-    const scale = cropImage.baseScale * cropZoom;
-    setCropOffset({
-      x: Math.min(0, Math.max(320 - cropImage.width * scale, cropDrag.current.ox + dx)),
-      y: Math.min(0, Math.max(320 - cropImage.height * scale, cropDrag.current.oy + dy)),
-    });
+    setCropOffset(clampCrop({ x: cropDrag.current.ox + dx, y: cropDrag.current.oy + dy }, cropImage, cropZoom));
   }
 
   async function confirmCrop() {
@@ -108,10 +115,11 @@ export function AdminDashboard() {
       const canvas = document.createElement("canvas");
       canvas.width = canvas.height = 800;
       const context = canvas.getContext("2d");
-      const sx = -cropOffset.x / scale;
-      const sy = -cropOffset.y / scale;
-      const size = 320 / scale;
-      context.drawImage(cropImage.image, sx, sy, size, size, 0, 0, 800, 800);
+      // White behind the image, for the space shown when it is zoomed out smaller than the square.
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, 800, 800);
+      const ratio = 800 / 320;
+      context.drawImage(cropImage.image, cropOffset.x * ratio, cropOffset.y * ratio, cropImage.width * scale * ratio, cropImage.height * scale * ratio);
       const blob = await new Promise((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error("Could not crop this image.")), "image/jpeg", 0.9));
       const result = await api("/admin/uploads/product-image", { method: "POST", body: blob, headers: { "Content-Type": "image/jpeg" } });
       setProduct((current) => ({ ...current, imageUrl: result.url }));
@@ -402,7 +410,8 @@ export function AdminDashboard() {
               : <><span>{item.category || "Other"} · {item.codeNumber} · {item.currency} {item.price} · {item.stockAvailable} available / {item.stockReserved || 0} reserved / {item.stockSold} sold</span>{item.variants?.map((variant) => <small key={variant._id}>{variant.name} · {item.currency} {variant.price} · {variant.stockQuantity ?? variant.codes.filter((code) => code.status === "available").length} available</small>)}</>}<small>{item.active ? "Visible" : "Hidden"}{item.showInPopular ? ` · Popular #${item.popularOrder || 0}` : ""}</small></div><div className="admin-product-actions"><button type="button" className="admin-secondary" onClick={() => edit(item)}>Edit</button><button type="button" className="admin-delete" onClick={() => deleteProduct(item)}>Delete</button></div></article>)}{!products.length && <p className="admin-empty">No products yet.</p>}</div></section>
         </div></>}
         {tab === "Orders" && <>{filterBar}<section className="admin-card"><h2>Orders <small>({filteredOrders.length})</small></h2><OrderTable orders={filteredOrders} onMarkPaid={markPaid} onCancel={cancelOrder} onDelete={deleteOrder} supplierProps={{ api, onDone: async (text) => { setError(""); setMessage(text); await refresh(true); }, onError: (text) => { setMessage(""); setError(text); } }} emptyText={filterActive ? "No orders match these filters." : undefined} /></section></>}
-        {tab === "Users" && <><AdminWalletCredit ref={creditRef} api={api} onCredited={() => refresh(true)} /><section className="admin-card"><h2>Users <small>({users.length})</small></h2><div className="admin-table-scroll"><table className="admin-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Purchases</th><th>Paid total</th><th>Purchase history</th><th>Joined</th><th>Status</th><th>Actions</th></tr></thead><tbody>{users.map((user) => <tr key={user.id} className={user.banned ? "is-banned" : undefined}><td>{user.name || "—"}<small className="admin-user-id" title="User id">{String(user.id)}</small></td><td>{user.email}</td><td>{user.phone || "—"}</td><td>{user.orderCount}</td><td>{Object.entries(user.paidTotals || {}).length ? Object.entries(user.paidTotals).map(([currency, total]) => <small key={currency}>{currency} {Number(total).toFixed(2)}</small>) : "—"}</td><td><details className="admin-user-history"><summary>View {user.purchases?.length || 0}</summary><div>{user.purchases?.length ? user.purchases.map((purchase) => <article key={purchase.id}><strong>{purchase.productName}{purchase.variantName ? ` — ${purchase.variantName}` : ""} × {purchase.quantity}</strong><small>Invoice ID: {purchase.invoiceId || "—"}</small><span>{purchase.status} · {purchase.currency} {Number(purchase.amount).toFixed(2)}</span><time>{purchase.paidAt ? "Paid" : "Ordered"}: {new Date(purchase.paidAt || purchase.createdAt).toLocaleString()}</time></article>) : <p>No purchases yet.</p>}</div></details></td><td>{user.createdAt ? new Date(user.createdAt).toLocaleString() : "—"}</td><td>{user.isAdmin ? <span className="user-status is-admin">Admin</span> : user.banned ? <span className="user-status is-banned" title={user.banReason || undefined}>Banned{user.banReason && <small>{user.banReason}</small>}</span> : <span className="user-status">Active</span>}</td><td>{user.isAdmin ? <div className="admin-user-actions">{user.emailVerified && <button type="button" className="admin-secondary" onClick={() => { creditRef.current?.pick(String(user.id)); document.querySelector(".admin-wallet-credit")?.scrollIntoView({ behavior: "smooth" }); }}>Credit</button>}</div> : <div className="admin-user-actions">{user.emailVerified ? <button type="button" className="admin-secondary" onClick={() => { creditRef.current?.pick(String(user.id)); document.querySelector(".admin-wallet-credit")?.scrollIntoView({ behavior: "smooth" }); }}>Credit</button> : <small className="admin-help-text" title="Only verified users can receive credit">Not verified</small>}{user.banned ? <button type="button" className="admin-secondary" onClick={() => unbanUser(user)}>Unban</button> : <button type="button" className="admin-secondary is-warning" onClick={() => banUser(user)}>Ban</button>}<button type="button" className="admin-danger" onClick={() => deleteUser(user)}>Delete</button></div>}</td></tr>)}</tbody></table></div></section></>}
+        {tab === "Users" && <><AdminWalletCredit ref={creditRef} api={api} onCredited={() => refresh(true)} /><section className="admin-card"><h2>Users <small>({users.length})</small></h2><div className="admin-table-scroll"><table className="admin-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Purchases</th><th>Paid total</th><th>Purchase history</th><th>Joined</th><th>Status</th><th>Actions</th></tr></thead><tbody>{users.map((user) => <tr key={user.id} className={user.banned ? "is-banned" : undefined}><td>{user.name || "—"}<small className="admin-user-id" title="User id">{String(user.id)}</small></td><td>{user.email}</td><td>{user.phone || "—"}</td><td>{user.orderCount}</td><td>{Object.entries(user.paidTotals || {}).length ? Object.entries(user.paidTotals).map(([currency, total]) => <small key={currency}>{currency} {Number(total).toFixed(2)}</small>) : "—"}</td><td><details className="admin-user-history"><summary>View {user.purchases?.length || 0}</summary><div>{user.purchases?.length ? user.purchases.map((purchase) => <article key={purchase.id}><strong>{purchase.productName}{purchase.variantName ? ` — ${purchase.variantName}` : ""} × {purchase.quantity}</strong><small>Invoice ID: {purchase.invoiceId || "—"}</small><span>{purchase.status} · {purchase.currency} {Number(purchase.amount).toFixed(2)}</span><time>{purchase.paidAt ? "Paid" : "Ordered"}: {new Date(purchase.paidAt || purchase.createdAt).toLocaleString()}</time></article>) : <p>No purchases yet.</p>}</div></details></td><td>{user.createdAt ? new Date(user.createdAt).toLocaleString() : "—"}</td><td>{user.isAdmin ? <span className="user-status is-admin">Admin</span> : user.banned ? <span className="user-status is-banned" title={user.banReason || undefined}>Banned{user.banReason && <small>{user.banReason}</small>}</span> : <span className="user-status">Active</span>}</td><td>{user.isAdmin ? <div className="admin-user-actions"><button type="button" className="admin-secondary" onClick={() => { setActivityUser({ id: String(user.id), name: user.name || "", email: user.email || "" }); setTab("Activity"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Activity</button>{user.emailVerified && <button type="button" className="admin-secondary" onClick={() => { creditRef.current?.pick(String(user.id)); document.querySelector(".admin-wallet-credit")?.scrollIntoView({ behavior: "smooth" }); }}>Credit</button>}</div> : <div className="admin-user-actions"><button type="button" className="admin-secondary" onClick={() => { setActivityUser({ id: String(user.id), name: user.name || "", email: user.email || "" }); setTab("Activity"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Activity</button>{user.emailVerified ? <button type="button" className="admin-secondary" onClick={() => { creditRef.current?.pick(String(user.id)); document.querySelector(".admin-wallet-credit")?.scrollIntoView({ behavior: "smooth" }); }}>Credit</button> : <small className="admin-help-text" title="Only verified users can receive credit">Not verified</small>}{user.banned ? <button type="button" className="admin-secondary" onClick={() => unbanUser(user)}>Unban</button> : <button type="button" className="admin-secondary is-warning" onClick={() => banUser(user)}>Ban</button>}<button type="button" className="admin-danger" onClick={() => deleteUser(user)}>Delete</button></div>}</td></tr>)}</tbody></table></div></section></>}
+        {tab === "Activity" && <AdminActivity key={activityUser?.id || "all"} api={api} focusUser={activityUser} />}
         {tab === "Coupons" && <AdminCoupons api={api} products={products} />}
         {tab === "Reviews" && <section className="admin-card"><h2>Product comments <small>({reviews.length})</small></h2><div className="admin-review-list">{reviews.map((review) => <article className="admin-review-card" key={`${review.productId}:${review.id}`}><header><div><strong>{review.productName}</strong><span>{review.userName} · {"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)} · ♥ {review.likeCount}</span></div><time>{review.createdAt ? new Date(review.createdAt).toLocaleString() : "—"}</time></header><p>{review.comment || <em className="admin-review-rating-only">Rating only, no written feedback</em>}</p><form className="admin-review-reply" onSubmit={(event) => saveReviewReply(event, review)}><label>Admin reply<textarea name="reply" rows={3} maxLength={1500} defaultValue={review.adminReply || ""} placeholder="Write a reply to this comment…" /></label><button type="submit" className="admin-secondary">Save reply</button><button type="button" className="admin-delete" onClick={() => deleteReview(review)}>Delete comment</button></form>{review.adminReply && <small className="admin-review-replied-by">Replied by {review.adminEmail || "admin"}{review.repliedAt ? ` · ${new Date(review.repliedAt).toLocaleString()}` : ""}</small>}</article>)}{!reviews.length && <p className="admin-empty">No product comments yet.</p>}</div></section>}
         {tab === "Product history" && <section className="admin-card"><h2>Product activity <small>({productActivity?.length || 0})</small></h2><p>Product add, edit, delete, stock renewal, and cancellation events, with the admin and exact time.</p><div className="admin-table-scroll"><table className="admin-table"><thead><tr><th>Product</th><th>Action</th><th>Admin</th><th>Details</th><th>Date and time</th></tr></thead><tbody>{(productActivity || []).map((entry) => <tr key={entry._id}><td>{entry.productName}</td><td>{({ added: "Added", edited: "Edited", deleted: "Deleted", stock_renewed: "Stock renewed", codes_added: "Codes added", order_cancelled: "Order cancelled — stock returned" })[entry.action] || entry.action}</td><td>{entry.adminEmail}</td><td>{entry.details || "—"}</td><td>{entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "—"}</td></tr>)}</tbody></table>{!productActivity?.length && <p className="admin-empty">No product activity recorded yet.</p>}</div></section>}
@@ -411,11 +420,11 @@ export function AdminDashboard() {
     </div>
     {cropImage && <div className="admin-crop-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !imageUploading) { URL.revokeObjectURL(cropImage.src); setCropImage(null); } }}>
       <section className="admin-crop-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-crop-title">
-        <header><div><h2 id="admin-crop-title">Crop product image</h2><p>Drag the image to adjust the square crop.</p></div><button type="button" aria-label="Close cropper" disabled={imageUploading} onClick={() => { URL.revokeObjectURL(cropImage.src); setCropImage(null); }}>×</button></header>
+        <header><div><h2 id="admin-crop-title">Crop product image</h2><p>Drag to move. Zoom out to fit the whole image with white space around it, or zoom in to crop.</p></div><button type="button" aria-label="Close cropper" disabled={imageUploading} onClick={() => { URL.revokeObjectURL(cropImage.src); setCropImage(null); }}>×</button></header>
         <div ref={cropStage} className="admin-crop-stage" onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); cropDrag.current = { x: event.clientX, y: event.clientY, ...cropOffset }; }} onPointerMove={moveCrop} onPointerUp={() => { cropDrag.current = null; }} onPointerCancel={() => { cropDrag.current = null; }}>
           <img draggable="false" src={cropImage.src} alt="Crop preview" style={{ width: cropImage.width * cropImage.baseScale * cropZoom, height: cropImage.height * cropImage.baseScale * cropZoom, left: cropOffset.x, top: cropOffset.y }} />
         </div>
-        <label className="admin-crop-zoom">Zoom <input type="range" min="1" max="3" step="0.01" value={cropZoom} onChange={(event) => { const next = Number(event.target.value); const scale = cropImage.baseScale * next; setCropZoom(next); setCropOffset((current) => ({ x: Math.min(0, Math.max(320 - cropImage.width * scale, current.x)), y: Math.min(0, Math.max(320 - cropImage.height * scale, current.y)) })); }} /></label>
+        <label className="admin-crop-zoom">Zoom <input type="range" min="0.3" max="3" step="0.01" value={cropZoom} onChange={(event) => { const next = Number(event.target.value); const oldScale = cropImage.baseScale * cropZoom; const scale = cropImage.baseScale * next; setCropZoom(next); setCropOffset((current) => clampCrop({ x: 160 - (160 - current.x) * scale / oldScale, y: 160 - (160 - current.y) * scale / oldScale }, cropImage, next)); }} /></label>
         <footer><button type="button" className="admin-secondary" disabled={imageUploading} onClick={() => { URL.revokeObjectURL(cropImage.src); setCropImage(null); }}>Cancel</button><button type="button" className="auth-submit" disabled={imageUploading} onClick={confirmCrop}>{imageUploading ? "Uploading…" : "Crop & upload"}</button></footer>
       </section>
     </div>}

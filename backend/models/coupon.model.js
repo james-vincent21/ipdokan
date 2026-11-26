@@ -14,6 +14,8 @@ const couponSchema = new mongoose.Schema({
   maxUses: { type: Number, default: 0, min: 0 },
   onePerUser: { type: Boolean, default: true },
   productIds: { type: [mongoose.Schema.Types.ObjectId], default: [] },
+  // Empty = every customer. Otherwise only these accounts; both the account id and its email must match.
+  allowedUsers: { type: [{ _id: false, userId: { type: String, required: true }, email: { type: String, required: true, lowercase: true, trim: true }, name: { type: String, default: "" } }], default: [] },
   createdBy: { type: String, default: "" },
 }, { timestamps: true });
 

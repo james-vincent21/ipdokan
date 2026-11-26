@@ -21,11 +21,16 @@ function publicCoupon(coupon) {
 
 // Throws CouponError with a message for the customer when the coupon cannot be used.
 // Orders already placed in the same checkout do not count against the limits.
-async function usableCoupon(code, userId, checkoutId = "") {
+async function usableCoupon(code, userId, checkoutId = "", userEmail = "") {
   const normalized = normalizeCouponCode(code);
   if (!normalized) throw new CouponError("Enter a coupon code.");
   const coupon = await Coupon.findOne({ code: normalized }).lean();
   if (!coupon || !coupon.active) throw new CouponError("This coupon code is not valid.");
+  if (coupon.allowedUsers?.length) {
+    if (!userId) throw new CouponError("Sign in to use this coupon.");
+    const email = String(userEmail || "").trim().toLowerCase();
+    if (!coupon.allowedUsers.some((allowed) => allowed.userId === String(userId) && allowed.email === email)) throw new CouponError("This coupon is not available for your account.");
+  }
   if (coupon.expiresAt && new Date(coupon.expiresAt) <= new Date()) throw new CouponError("This coupon has expired.");
   const otherCheckouts = { couponId: coupon._id, status: { $ne: "cancelled" }, ...(checkoutId ? { checkoutId: { $ne: checkoutId } } : {}) };
   if (coupon.onePerUser && userId && await Order.exists({ ...otherCheckouts, userId })) throw new CouponError("You have already used this coupon.");
@@ -40,8 +45,8 @@ async function usableCoupon(code, userId, checkoutId = "") {
 // Returns no discount (and no coupon) for a product the coupon does not cover, so the rest of a cart still gets it.
 // A fixed-amount coupon is spread over the orders of one checkout until it is used up.
 // The order always keeps at least 1% of its price, so no payment is ever zero.
-export async function orderDiscount({ code, checkoutId, userId, currency, subtotal, productId }) {
-  const coupon = await usableCoupon(code, userId, checkoutId);
+export async function orderDiscount({ code, checkoutId, userId, userEmail, currency, subtotal, productId }) {
+  const coupon = await usableCoupon(code, userId, checkoutId, userEmail);
   if (!appliesTo(coupon, productId)) return { couponId: null, couponCode: "", discount: 0 };
   let discount;
   if (coupon.type === "percent") discount = roundMoney(subtotal * coupon.percent / 100);
@@ -59,7 +64,7 @@ export async function orderDiscount({ code, checkoutId, userId, currency, subtot
 // `productIds`: the products being bought; the coupon must cover at least one of them.
 export async function checkCoupon(req, res, next) {
   try {
-    const coupon = await usableCoupon(req.body?.code, req.user?.id || "");
+    const coupon = await usableCoupon(req.body?.code, req.user?.id || "", "", req.user?.email || "");
     const productIds = Array.isArray(req.body?.productIds) ? req.body.productIds.map(String) : [];
     if (productIds.length && !productIds.some((id) => appliesTo(coupon, id))) throw new CouponError(productIds.length === 1 ? "This coupon does not work for this product." : "This coupon does not work for any product in your cart.");
     res.json({ coupon: publicCoupon(coupon) });
@@ -87,7 +92,8 @@ function couponInput(body) {
   }
   const productIds = [...new Set((Array.isArray(body?.productIds) ? body.productIds : []).map(String))];
   if (productIds.some((id) => !mongoose.isValidObjectId(id))) throw new CouponError("One of the chosen products is not valid.");
-  return { code, type, percent, amountUsd: roundMoney(amountUsd), amountBdt: roundMoney(amountBdt), maxUses, expiresAt, onePerUser: body?.onePerUser !== false, active: body?.active !== false, productIds };
+  const allowedUserIds = [...new Set((Array.isArray(body?.allowedUserIds) ? body.allowedUserIds : []).map(String))].slice(0, 200);
+  return { code, type, percent, amountUsd: roundMoney(amountUsd), amountBdt: roundMoney(amountBdt), maxUses, expiresAt, onePerUser: body?.onePerUser !== false, active: body?.active !== false, productIds, allowedUserIds };
 }
 
 async function withUsage(coupons) {
@@ -100,7 +106,7 @@ async function withUsage(coupons) {
   const byId = new Map(usage.map((row) => [String(row._id), row]));
   return coupons.map((coupon) => {
     const row = byId.get(String(coupon._id));
-    return { id: String(coupon._id), ...publicCoupon(coupon), active: coupon.active, expiresAt: coupon.expiresAt, maxUses: coupon.maxUses, onePerUser: coupon.onePerUser, createdAt: coupon.createdAt, uses: row?.uses || 0, paidUses: row?.paidUses || 0, discountUsd: roundMoney(row?.discountUsd || 0), discountBdt: roundMoney(row?.discountBdt || 0) };
+    return { id: String(coupon._id), ...publicCoupon(coupon), allowedUsers: (coupon.allowedUsers || []).map((user) => ({ userId: user.userId, email: user.email, name: user.name })), active: coupon.active, expiresAt: coupon.expiresAt, maxUses: coupon.maxUses, onePerUser: coupon.onePerUser, createdAt: coupon.createdAt, uses: row?.uses || 0, paidUses: row?.paidUses || 0, discountUsd: roundMoney(row?.discountUsd || 0), discountBdt: roundMoney(row?.discountBdt || 0) };
   });
 }
 
@@ -116,7 +122,16 @@ export async function createCoupon(req, res, next) {
     const input = couponInput(req.body);
     if (await Coupon.exists({ code: input.code })) return res.status(409).json({ error: `A coupon named ${input.code} already exists.` });
     if (input.productIds.length && await Product.countDocuments({ _id: { $in: input.productIds } }) !== input.productIds.length) return res.status(400).json({ error: "One of the chosen products no longer exists. Refresh and try again." });
-    const coupon = await Coupon.create({ ...input, createdBy: String(req.user.email || "").toLowerCase() });
+    // Customer-only coupons: names and emails are read from the accounts themselves, never from the request.
+    const { allowedUserIds, ...fields } = input;
+    let allowedUsers = [];
+    if (allowedUserIds.length) {
+      const ids = allowedUserIds.map((id) => (mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : id));
+      const accounts = await mongoose.connection.collection("user").find({ _id: { $in: ids } }, { projection: { name: 1, email: 1 } }).toArray();
+      if (accounts.length !== allowedUserIds.length || accounts.some((account) => !account.email)) return res.status(400).json({ error: "One of the chosen customers no longer exists. Search and pick them again." });
+      allowedUsers = accounts.map((account) => ({ userId: String(account._id), email: String(account.email).toLowerCase(), name: account.name || "" }));
+    }
+    const coupon = await Coupon.create({ ...fields, allowedUsers, createdBy: String(req.user.email || "").toLowerCase() });
     res.status(201).json({ coupon: (await withUsage([coupon.toObject()]))[0] });
   } catch (error) {
     if (error instanceof CouponError) return res.status(400).json({ error: error.message });

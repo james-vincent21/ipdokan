@@ -118,9 +118,15 @@ export function ServiceCatalog() {
                   {product.imageUrl ? <img src={product.imageUrl} alt="" /> : <span className="product-stage"><span>{product.name?.trim()?.charAt(0).toUpperCase() || "P"}</span></span>}
                 </span>
                 <span className="popular-product-details">
-                  <span className="popular-product-meta"><span>{product.instantDelivery ? (setPrices.length ? formatPrice(Math.min(...setPrices), currency) : "Contact admin") : formatPrice(productPrice, currency)}</span>{product.available !== undefined && <span className={product.available ? "catalog-stock" : "catalog-stock is-empty"}>{product.available} in stock</span>}{product.rating && <span className="product-rating"><b>★</b> {product.rating} <i>☰</i> {product.reviews}</span>}</span>
-                  <span className="popular-product-name">{product.name}</span>
-                  <span className="catalog-home-cta">Purchase →</span>
+                  <span className="popular-product-row">
+                    <span className="popular-product-name">{product.name}</span>
+                    {product.rating > 0 && <span className="popular-product-rating"><b aria-hidden="true">★</b> {Number(product.rating).toFixed(1)}</span>}
+                    {product.available !== undefined && <span className={`popular-product-stock${product.available ? "" : " is-empty"}`}>{product.available ? `${product.available} in stock` : "Out of stock"}</span>}
+                  </span>
+                  <span className="popular-product-footer">
+                    <span className="popular-product-price">{(product.instantDelivery ? setPrices.length > 1 && new Set(setPrices).size > 1 : new Set(variants.map((variant) => Number(currency === "BDT" ? variant.priceBdt : (variant.priceUsd ?? variant.price)))).size > 1) && <small>From</small>}{product.instantDelivery ? (setPrices.length ? formatPrice(Math.min(...setPrices), currency) : "Contact admin") : formatPrice(productPrice, currency)}</span>
+                    <span className="popular-product-buy">Buy now <span aria-hidden="true">→</span></span>
+                  </span>
                 </span>
               </a>
               );

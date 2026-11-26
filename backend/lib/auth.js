@@ -7,6 +7,7 @@ import { oauthProvider } from "@better-auth/oauth-provider";
 import { config } from "../config/env.js";
 import { authStorage } from "./redis.js";
 import { queueOtpEmail } from "./queue.js";
+import { logLogin } from "../controllers/activity.controller.js";
 
 export const auth = config.authEnabled ? betterAuth({
   appName: "IP Dokan",
@@ -66,6 +67,8 @@ export const auth = config.authEnabled ? betterAuth({
           const user = await mongoose.connection.collection("user").findOne({ _id }, { projection: { banned: 1 } });
           if (user?.banned) throw new APIError("FORBIDDEN", { message: "This account has been suspended. Contact support on Telegram if you think this is a mistake.", code: "ACCOUNT_BANNED" });
         },
+        // Admin activity log: when, how and from which device/browser/OS the customer signed in.
+        async after(session, context) { await logLogin(session, context); },
       },
     },
   },

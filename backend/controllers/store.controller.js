@@ -60,7 +60,7 @@ async function chargeWithCoupon(req, productTotal, currency, productId) {
   if (!code) return { ...orderCharge(productTotal), checkoutId };
   if (!checkoutId) throw new CouponError("Refresh the page and apply the coupon again.");
   const subtotal = withServiceFee(productTotal).subtotal;
-  const { couponId, couponCode, discount } = await orderDiscount({ code, checkoutId, userId: String(req.user.id), currency, subtotal, productId });
+  const { couponId, couponCode, discount } = await orderDiscount({ code, checkoutId, userId: String(req.user.id), userEmail: req.user.email || "", currency, subtotal, productId });
   return { ...orderCharge(productTotal, discount), couponId, couponCode, checkoutId };
 }
 

@@ -297,9 +297,6 @@ html[data-theme="light"] .checkout-delivery-card > article {
 html[data-theme="light"] .catalog-product-description {
     color: rgb(64 73 91)
 }
-html[data-theme="light"] .catalog-home-cta {
-    color: rgb(0 53 184)
-}
 html[data-theme="light"] .catalog-quantity {
     color: rgb(61 83 122)
 }
@@ -789,7 +786,7 @@ html[data-theme="light"] .admin-crop-dialog > header button {
     color: rgb(41 73 142)
 }
 html[data-theme="light"] .admin-crop-stage {
-    background: rgb(243 245 250)
+    background: rgb(255 255 255)
 }
 html[data-theme="light"] .admin-crop-zoom {
     color: rgb(61 83 122)
@@ -1043,20 +1040,37 @@ html[data-theme="light"] .popular-product-art.nine-gb .product-stage > span::aft
 html[data-theme="light"] .popular-product-art.xproxy .product-stage > span {
     color: rgb(19 0 184)
 }
-html[data-theme="light"] .popular-product-meta {
-    color: rgb(21 21 30)
-}
-html[data-theme="light"] .product-rating {
-    color: rgb(65 65 74)
-}
-html[data-theme="light"] .product-rating b {
-    color: rgb(245 187 0)
-}
-html[data-theme="light"] .product-rating i {
-    color: rgb(109 110 122)
-}
 html[data-theme="light"] .popular-product-name {
-    color: rgb(24 24 30)
+    color: rgb(15 21 36)
+}
+html[data-theme="light"] .popular-product-stock {
+    color: rgb(37 159 98)
+}
+html[data-theme="light"] .popular-product-stock.is-empty {
+    color: rgb(168 16 16)
+}
+html[data-theme="light"] .popular-product-rating {
+    color: rgb(35 42 54)
+}
+html[data-theme="light"] .popular-product-rating b {
+    color: rgb(223 161 0)
+}
+html[data-theme="light"] .popular-product-price {
+    color: rgb(26 26 26)
+}
+html[data-theme="light"] .popular-product-price small {
+    color: rgb(79 90 112)
+}
+html[data-theme="light"] .popular-product-buy {
+    background: rgb(57 119 255);
+    color: #ffffff
+}
+html[data-theme="light"] .popular-product-card:hover .popular-product-buy {
+    background: rgb(75 130 255);
+    color: #fff
+}
+html[data-theme="light"] .popular-product-art:has(> img) {
+    background: rgb(255 255 255)
 }
 html[data-theme="light"] .view-products-button {
     border: 1px solid rgb(22 66 161 / 35%);
@@ -2463,6 +2477,96 @@ html[data-theme="light"] .admin-coupon-customers {
 }
 html[data-theme="light"] .admin-coupon-discount {
     color: rgb(45 182 115)
+}
+html[data-theme="light"] .admin-user-picker input {
+    background: rgb(245 247 251);
+    color: rgb(10 20 41)
+}
+html[data-theme="light"] .admin-user-picker input:focus {
+    border-color: rgb(0 62 198)
+}
+html[data-theme="light"] .admin-user-picker-results {
+    background: rgb(250 251 252);
+    box-shadow: 0 16px 40px rgb(0 0 0 / 14%)
+}
+html[data-theme="light"] .admin-user-picker-results button {
+    color: rgb(41 73 142)
+}
+html[data-theme="light"] .admin-user-picker-results button:hover {
+    background: rgb(57 119 255 / 14%)
+}
+html[data-theme="light"] .admin-user-picker-results span {
+    color: rgb(79 90 112)
+}
+html[data-theme="light"] .admin-user-picker-results em {
+    color: rgb(168 16 16)
+}
+html[data-theme="light"] .admin-user-picker-results p {
+    color: rgb(79 90 112)
+}
+html[data-theme="light"] .admin-coupon-chip {
+    border: 1px solid rgb(0 62 198 / 35%);
+    background: rgb(57 119 255 / 10%);
+    color: rgb(41 73 142)
+}
+html[data-theme="light"] .admin-coupon-chip small {
+    color: rgb(79 90 112)
+}
+html[data-theme="light"] .admin-coupon-chip button {
+    background: rgb(15 23 42 / 7.2%);
+    color: rgb(41 73 142)
+}
+html[data-theme="light"] .admin-activity-user strong {
+    color: rgb(10 20 41)
+}
+html[data-theme="light"] .admin-activity-user span {
+    color: rgb(79 90 112)
+}
+html[data-theme="light"] .admin-activity-avatar {
+    background: linear-gradient(135deg, rgb(57 119 255), rgb(139 92 246));
+    color: #fff
+}
+html[data-theme="light"] .admin-activity-types button {
+    color: rgb(39 51 70)
+}
+html[data-theme="light"] .admin-activity-types button.is-active {
+    border-color: rgb(0 62 198);
+    background: rgb(57 119 255);
+    color: #fff
+}
+html[data-theme="light"] .admin-activity-stats span {
+    color: rgb(79 90 112)
+}
+html[data-theme="light"] .admin-activity-stats strong {
+    color: rgb(10 20 41)
+}
+html[data-theme="light"] .admin-activity-list li {
+    border-bottom: 1px solid rgb(15 23 42 / 7.2%)
+}
+html[data-theme="light"] .admin-activity-icon {
+    background: rgb(15 23 42 / 4.5%)
+}
+html[data-theme="light"] .admin-activity-list li.is-login .admin-activity-icon {
+    background: rgb(251 191 36 / 14%)
+}
+html[data-theme="light"] .admin-activity-list li.is-click .admin-activity-icon {
+    background: rgb(57 119 255 / 14%)
+}
+html[data-theme="light"] .admin-activity-body p {
+    color: rgb(41 73 142)
+}
+html[data-theme="light"] .admin-activity-body code {
+    background: rgb(15 23 42 / 5.4%);
+    color: rgb(0 56 184)
+}
+html[data-theme="light"] .admin-activity-body small {
+    color: rgb(79 90 112)
+}
+html[data-theme="light"] .admin-activity-who {
+    color: rgb(0 56 184)
+}
+html[data-theme="light"] .admin-activity-list time {
+    color: rgb(79 90 112)
 }
 
 html[data-theme="light"] {
